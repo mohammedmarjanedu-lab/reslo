@@ -1052,10 +1052,10 @@ def analyze_slab_opensees(request: AnalysisRequest) -> AnalysisResponse:
         if stresses and len(stresses) >= 32 and any(abs(s) > 1e-12 for s in stresses[:32]):
             arr = np.array(stresses[:32]).reshape(4, 8)
             nx, ny, nxy, mx, my, mxy, vx, vy = arr.mean(axis=0)
-            # Scale N*m/m -> kNm/m and N/m -> kN/m
-            mx = -mx / 1000.0
-            my = -my / 1000.0
-            mxy = -mxy / 1000.0
+            # Scale N*m/m -> kNm/m and N/m -> kN/m (positive = sagging moment / bottom tension)
+            mx = mx / 1000.0
+            my = my / 1000.0
+            mxy = mxy / 1000.0
             nx = nx / 1000.0
             ny = ny / 1000.0
             nxy = nxy / 1000.0
@@ -1067,9 +1067,9 @@ def analyze_slab_opensees(request: AnalysisRequest) -> AnalysisResponse:
             nx = (forces[0] + forces[6] + forces[12]) / 3.0 / 1000.0
             ny = (forces[1] + forces[7] + forces[13]) / 3.0 / 1000.0
             nxy = 0.0
-            mx = -(forces[3] + forces[9] + forces[15]) / 3.0 / 1000.0
-            my = -(forces[4] + forces[10] + forces[16]) / 3.0 / 1000.0
-            mxy = -(forces[5] + forces[11] + forces[17]) / 3.0 / 1000.0
+            mx = (forces[3] + forces[9] + forces[15]) / 3.0 / 1000.0
+            my = (forces[4] + forces[10] + forces[16]) / 3.0 / 1000.0
+            mxy = (forces[5] + forces[11] + forces[17]) / 3.0 / 1000.0
             vx = (forces[2] + forces[8] + forces[14]) / 3.0 / 1000.0
             vy = 0.0
         else:
@@ -1100,21 +1100,21 @@ def analyze_slab_opensees(request: AnalysisRequest) -> AnalysisResponse:
         s_mx = (6 * mx / (h_elem**2) / 1000.0) if h_elem > 0 else 0.0
         s_my = (6 * my / (h_elem**2) / 1000.0) if h_elem > 0 else 0.0
         s_mxy = (6 * mxy / (h_elem**2) / 1000.0) if h_elem > 0 else 0.0
-        s1 = (6 * m1 / (h_elem**2) / 1000.0) if h_elem > 0 else 0.0
-        s2 = (6 * m2 / (h_elem**2) / 1000.0) if h_elem > 0 else 0.0
-        vm = np.sqrt(s1**2 + s2**2 - s1*s2)
+        s1 = (s_mx + s_my) / 2.0 + np.sqrt(((s_mx - s_my) / 2.0)**2 + s_mxy**2)
+        s2 = (s_mx + s_my) / 2.0 - np.sqrt(((s_mx - s_my) / 2.0)**2 + s_mxy**2)
+        vm = np.sqrt(s1**2 - s1 * s2 + s2**2)
         element_stresses.append(ElementStress(
             elementId=elem.id,
             s1=round(s1, 3), s2=round(s2, 3), vm=round(vm, 3),
-            mx=round(s_mx, 3), my=round(s_my, 3), mxy=round(s_mxy, 3)
+            mx=round(mx, 6), my=round(my, 6), mxy=round(mxy, 6)
         ))
 
         # Shear calculations (in kN/m)
-        v1 = np.sqrt(vx**2 + vy**2)
-        s_angle = np.degrees(np.arctan2(vy, vx)) if abs(vx) > 1e-12 or abs(vy) > 1e-12 else 0.0
+        v1 = np.hypot(vx, vy)
+        angle_v = np.degrees(np.arctan2(vy, vx)) if (abs(vx) > 1e-12 or abs(vy) > 1e-12) else 0.0
         element_shears.append(ElementShear(
             elementId=elem.id,
-            vx=round(vx, 3), vy=round(vy, 3), v1=round(v1, 3), angle=round(s_angle, 2)
+            vx=round(vx, 3), vy=round(vy, 3), v1=round(v1, 3), angle=round(angle_v, 2)
         ))
 
         min_mx = min(min_mx, mx)
@@ -1134,12 +1134,12 @@ def analyze_slab_opensees(request: AnalysisRequest) -> AnalysisResponse:
         min_nxy = min(min_nxy, nxy)
         max_nxy = max(max_nxy, nxy)
 
-    # Column reaction forces for Punching Shear checks
+    # 9. Compute Column Punching Shear Stresses (IS 456:2000 Clause 31.6.3.1 / ETABS Standard)
     column_punching = []
-    d_eff = max(0.1, h - 0.03)
+    cover = 0.025
+    d_eff = max(0.05, h - cover - 0.012)  # Effective depth in meters
     fck_MPa = (E / 1e6 / 5000.0) ** 2
     fck_MPa = max(20, min(80, fck_MPa))
-    v_c = 0.33 * np.sqrt(fck_MPa) * 1e6  # capacity in Pa
 
     ops.reactions()
     for col_idx, nidx in enumerate(col_node_indices):
@@ -1149,6 +1149,12 @@ def analyze_slab_opensees(request: AnalysisRequest) -> AnalysisResponse:
         shape = request.columnShapes[col_idx] if (hasattr(request, 'columnShapes') and request.columnShapes and col_idx < len(request.columnShapes)) else "rectangular"
         diameter = request.columnDiameters[col_idx] if (hasattr(request, 'columnDiameters') and request.columnDiameters and col_idx < len(request.columnDiameters)) else 0.5
         
+        # IS 456:2000 Punching Capacity: v_c = k_s * 0.25 * sqrt(fck)
+        beta_c = (wcol / dcol) if dcol > 0 else 1.0
+        if beta_c < 1.0: beta_c = 1.0 / beta_c
+        ks = min(1.0, 0.5 + beta_c)
+        v_c = ks * 0.25 * np.sqrt(fck_MPa) * 1e6  # capacity in Pa (IS 456 / ETABS standard)
+
         # Query vertical axial reaction force of column (Fz at base node in Newtons)
         try:
             rxn = ops.nodeReaction(base_node_id)
