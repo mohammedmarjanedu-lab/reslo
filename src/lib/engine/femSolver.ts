@@ -1092,9 +1092,9 @@ export function analyzeAllSlabs(
         κxy += dN_dy[i] * u_e[3 * i + 1] + dN_dx[i] * u_e[3 * i + 2];
       }
 
-      const mx = Dmat[0][0] * κx + Dmat[0][1] * κy;
-      const my = Dmat[1][0] * κx + Dmat[1][1] * κy;
-      const mxy = Dmat[2][2] * κxy;
+      const mx = (Dmat[0][0] * κx + Dmat[0][1] * κy) / 1000.0;
+      const my = (Dmat[1][0] * κx + Dmat[1][1] * κy) / 1000.0;
+      const mxy = (Dmat[2][2] * κxy) / 1000.0;
 
       momentMx.push({ elementId: elem.id, value: mx });
       momentMy.push({ elementId: elem.id, value: my });

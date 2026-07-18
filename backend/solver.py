@@ -830,8 +830,11 @@ def analyze_slab(request: AnalysisRequest) -> AnalysisResponse:
             n1=round(n1, 3), n2=round(n2, 3), angle=round(angle_m, 2)
         ))
 
-        # Bending moments
+        # Bending moments (scale N*m/m -> kNm/m)
         mx, my, mxy = compute_element_moments(xy, u_bend, D_mat)
+        mx = mx / 1000.0
+        my = my / 1000.0
+        mxy = mxy / 1000.0
         element_moments.append(ElementMoment(
             elementId=elem_idx,
             mx=round(mx, 6), my=round(my, 6), mxy=round(mxy, 6),
@@ -840,12 +843,12 @@ def analyze_slab(request: AnalysisRequest) -> AnalysisResponse:
             angle=round(0.5 * np.degrees(np.arctan2(2*mxy, mx-my)), 2)
         ))
 
-        # Bending stresses
-        s_mx = 6 * mx / (h_m**2) if h_m > 0 else 0
-        s_my = 6 * my / (h_m**2) if h_m > 0 else 0
-        s_mxy = 6 * mxy / (h_m**2) if h_m > 0 else 0
-        s1 = 6 * element_moments[-1].m1 / (h_m**2) if h_m > 0 else 0
-        s2 = 6 * element_moments[-1].m2 / (h_m**2) if h_m > 0 else 0
+        # Bending stresses (in MPa using h_m in meters: 6 * M (kNm/m) / h^2 (m^2) / 1000 = MPa)
+        s_mx = (6 * mx / (h_m**2) / 1000.0) if h_m > 0 else 0
+        s_my = (6 * my / (h_m**2) / 1000.0) if h_m > 0 else 0
+        s_mxy = (6 * mxy / (h_m**2) / 1000.0) if h_m > 0 else 0
+        s1 = (6 * element_moments[-1].m1 / (h_m**2) / 1000.0) if h_m > 0 else 0
+        s2 = (6 * element_moments[-1].m2 / (h_m**2) / 1000.0) if h_m > 0 else 0
         vm = np.sqrt(s1**2 + s2**2 - s1*s2)
         element_stresses.append(ElementStress(
             elementId=elem_idx,

@@ -129,14 +129,26 @@ def _build_model(request: AnalysisRequest, nodes_xy, nn, elem_nodes, col_node_in
 
     # 3. Walls Setup
     if not lateral_cr_mode:
-        # Gravity mode: rigid translational constraints
+        # Gravity mode: rigid translational constraints for all wall nodes
         for nid in wall_node_ids_set:
             if nid not in slave_nodes:
                 if nid not in node_fixities:
                     node_fixities[nid] = [0, 0, 0, 0, 0, 0]
-                node_fixities[nid][0] = 1
-                node_fixities[nid][1] = 1
-                node_fixities[nid][2] = 1
+                node_fixities[nid][0] = 1  # Ux
+                node_fixities[nid][1] = 1  # Uy
+                node_fixities[nid][2] = 1  # Uz
+
+        # Rotational fixities (Rx, Ry) for fixed shear wall boundaries
+        if hasattr(request, 'wallBoundaryConditions') and request.wallBoundaryConditions and hasattr(request, 'wallStartPoints') and request.wallStartPoints:
+            for w_idx, bc in enumerate(request.wallBoundaryConditions):
+                if bc in ('fixed-fixed', 'fixed-free', 'fixed') and w_idx < len(request.wallStartPoints) and w_idx < len(request.wallEndPoints):
+                    w_start = request.wallStartPoints[w_idx]
+                    w_end = request.wallEndPoints[w_idx]
+                    w_nodes = find_nodes_near_segment(nodes_xy, (w_start.x, w_start.y), (w_end.x, w_end.y), tol=0.05)
+                    for nid in w_nodes:
+                        if nid not in slave_nodes and nid in node_fixities:
+                            node_fixities[nid][3] = 1  # Rx
+                            node_fixities[nid][4] = 1  # Ry
     else:
         # CR mode: equivalent pier model of the walls (wide-column frame method)
         if (len(request.wallStartPoints) > 0 and len(request.wallEndPoints) > 0
@@ -1031,18 +1043,25 @@ def analyze_slab_opensees(request: AnalysisRequest) -> AnalysisResponse:
         if stresses and len(stresses) >= 32 and any(abs(s) > 1e-12 for s in stresses[:32]):
             arr = np.array(stresses[:32]).reshape(4, 8)
             nx, ny, nxy, mx, my, mxy, vx, vy = arr.mean(axis=0)
-            mx = -mx
-            my = -my
-            mxy = -mxy
+            # Scale N*m/m -> kNm/m and N/m -> kN/m
+            mx = -mx / 1000.0
+            my = -my / 1000.0
+            mxy = -mxy / 1000.0
+            nx = nx / 1000.0
+            ny = ny / 1000.0
+            nxy = nxy / 1000.0
+            vx = vx / 1000.0
+            vy = vy / 1000.0
         elif forces and len(forces) >= 18:
             # ShellDKGT 18-element nodal force vector [Nx, Ny, Fz, Mx, My, Mz] per node
-            nx = (forces[0] + forces[6] + forces[12]) / 3.0
-            ny = (forces[1] + forces[7] + forces[13]) / 3.0
+            # Scale N*m/m -> kNm/m and N/m -> kN/m
+            nx = (forces[0] + forces[6] + forces[12]) / 3.0 / 1000.0
+            ny = (forces[1] + forces[7] + forces[13]) / 3.0 / 1000.0
             nxy = 0.0
-            mx = -(forces[3] + forces[9] + forces[15]) / 3.0
-            my = -(forces[4] + forces[10] + forces[16]) / 3.0
-            mxy = -(forces[5] + forces[11] + forces[17]) / 3.0
-            vx = (forces[2] + forces[8] + forces[14]) / 3.0
+            mx = -(forces[3] + forces[9] + forces[15]) / 3.0 / 1000.0
+            my = -(forces[4] + forces[10] + forces[16]) / 3.0 / 1000.0
+            mxy = -(forces[5] + forces[11] + forces[17]) / 3.0 / 1000.0
+            vx = (forces[2] + forces[8] + forces[14]) / 3.0 / 1000.0
             vy = 0.0
         else:
             nx = ny = nxy = mx = my = mxy = vx = vy = 0.0
@@ -1057,7 +1076,7 @@ def analyze_slab_opensees(request: AnalysisRequest) -> AnalysisResponse:
             n1=round(n1, 3), n2=round(n2, 3), angle=round(angle_m, 2)
         ))
 
-        # Moment calculations
+        # Moment calculations (in kNm/m)
         m1 = (mx + my) / 2 + np.sqrt(((mx - my) / 2)**2 + mxy**2)
         m2 = (mx + my) / 2 - np.sqrt(((mx - my) / 2)**2 + mxy**2)
         angle = 0.5 * np.degrees(np.arctan2(2 * mxy, mx - my)) if abs(mx - my) > 1e-12 or abs(mxy) > 1e-12 else 0.0
@@ -1067,12 +1086,13 @@ def analyze_slab_opensees(request: AnalysisRequest) -> AnalysisResponse:
             m1=round(m1, 6), m2=round(m2, 6), angle=round(angle, 2)
         ))
 
-        # Stress calculations (bending stress using element-specific thickness)
-        s_mx = 6 * mx / (h_elem**2) if h_elem > 0 else 0.0
-        s_my = 6 * my / (h_elem**2) if h_elem > 0 else 0.0
-        s_mxy = 6 * mxy / (h_elem**2) if h_elem > 0 else 0.0
-        s1 = 6 * m1 / (h_elem**2) if h_elem > 0 else 0.0
-        s2 = 6 * m2 / (h_elem**2) if h_elem > 0 else 0.0
+        # Stress calculations (bending stress in MPa using element-specific thickness)
+        # 6 * M (kNm/m) / h^2 (m^2) = kPa -> / 1000 = MPa
+        s_mx = (6 * mx / (h_elem**2) / 1000.0) if h_elem > 0 else 0.0
+        s_my = (6 * my / (h_elem**2) / 1000.0) if h_elem > 0 else 0.0
+        s_mxy = (6 * mxy / (h_elem**2) / 1000.0) if h_elem > 0 else 0.0
+        s1 = (6 * m1 / (h_elem**2) / 1000.0) if h_elem > 0 else 0.0
+        s2 = (6 * m2 / (h_elem**2) / 1000.0) if h_elem > 0 else 0.0
         vm = np.sqrt(s1**2 + s2**2 - s1*s2)
         element_stresses.append(ElementStress(
             elementId=elem.id,
@@ -1080,7 +1100,7 @@ def analyze_slab_opensees(request: AnalysisRequest) -> AnalysisResponse:
             mx=round(s_mx, 3), my=round(s_my, 3), mxy=round(s_mxy, 3)
         ))
 
-        # Shear calculations
+        # Shear calculations (in kN/m)
         v1 = np.sqrt(vx**2 + vy**2)
         s_angle = np.degrees(np.arctan2(vy, vx)) if abs(vx) > 1e-12 or abs(vy) > 1e-12 else 0.0
         element_shears.append(ElementShear(
@@ -1112,26 +1132,35 @@ def analyze_slab_opensees(request: AnalysisRequest) -> AnalysisResponse:
     fck_MPa = max(20, min(80, fck_MPa))
     v_c = 0.33 * np.sqrt(fck_MPa) * 1e6  # capacity in Pa
 
+    ops.reactions()
     for col_idx, nidx in enumerate(col_node_indices):
         master_id = nidx + 1
+        base_node_id = col_idx + 1000001
         wcol, dcol = col_dims_map.get(nidx, (0.3, 0.3))
-        col_ele_tag = col_idx + 3000001
+        shape = request.columnShapes[col_idx] if (hasattr(request, 'columnShapes') and request.columnShapes and col_idx < len(request.columnShapes)) else "rectangular"
+        diameter = request.columnDiameters[col_idx] if (hasattr(request, 'columnDiameters') and request.columnDiameters and col_idx < len(request.columnDiameters)) else 0.5
         
-        # Query axial force of vertical column element (local x axis force at node j)
+        # Query vertical axial reaction force of column (Fz at base node in Newtons)
         try:
-            col_forces = ops.eleForce(col_ele_tag)
-            # The column is vertical, so the vertical force is global Fz at node j (forces[8])
-            # or global Fz at node i (forces[2])
-            V_col = abs(col_forces[6]) if len(col_forces) >= 12 else 0.0
+            rxn = ops.nodeReaction(base_node_id)
+            V_col = abs(rxn[2]) if (rxn and len(rxn) >= 3) else 0.0
+            if V_col < 1e-3:
+                col_ele_tag = col_idx + 3000001
+                col_forces = ops.eleForce(col_ele_tag)
+                V_col = abs(col_forces[2]) if (col_forces and len(col_forces) >= 3) else 0.0
         except Exception:
             V_col = 0.0
             
         V_col_kN = V_col / 1000.0
-        b0 = 2 * (wcol + dcol + 2 * d_eff)
-        v_u = V_col / (b0 * d_eff) if b0 > 0 else 0
+        if shape == "circular":
+            b0 = np.pi * (diameter + d_eff)
+        else:
+            b0 = 2.0 * (wcol + dcol + 2.0 * d_eff)
+            
+        v_u = V_col / (b0 * d_eff) if (b0 > 0 and d_eff > 0) else 0.0
         v_u_MPa = v_u / 1e6
         v_c_MPa = v_c / 1e6
-        ratio = v_u / v_c if v_c > 0 else 0
+        ratio = v_u / v_c if v_c > 0 else 0.0
         
         if ratio < 0.7:
             status = "OK"

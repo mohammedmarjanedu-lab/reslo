@@ -69,7 +69,7 @@ if ($backendUrl) {
     
     # 6. Start Svelte frontend dev server (Vite loads correct VITE_API_URL on start!)
     Write-Host "Starting Svelte frontend (Vite)..." -ForegroundColor Cyan
-    $frontendJob = Start-Process npm -ArgumentList "run dev" -WindowStyle Hidden -PassThru
+    $frontendJob = Start-Process npm.cmd -ArgumentList "run dev" -WindowStyle Hidden -PassThru
     Start-Sleep -Seconds 2
 
     # 7. Start Frontend Cloudflare Tunnel
