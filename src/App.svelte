@@ -652,3 +652,52 @@
 {#if uiState.showExportDialog}
   <ExportDialog />
 {/if}
+
+{#if femState.isComputing}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="w-80 rounded-xl border border-[#333333] bg-[#141414] p-6 shadow-2xl flex flex-col items-center gap-4 text-center">
+      <!-- Premium Spinner -->
+      <div class="relative w-12 h-12">
+        <div class="absolute inset-0 rounded-full border-4 border-[#222222]"></div>
+        <div class="absolute inset-0 rounded-full border-4 border-t-[#D62430] animate-spin"></div>
+      </div>
+      <div class="flex flex-col gap-1">
+        <div class="text-xs font-bold text-white uppercase tracking-wider">Solving FEM Model</div>
+        <div class="text-[10px] text-slate-400">Running Finite Element analysis equations...</div>
+      </div>
+      {#if femState.progress > 0}
+        <div class="w-full space-y-1 mt-1">
+          <div class="h-1.5 w-full rounded-full bg-[#222222] overflow-hidden">
+            <div class="h-full bg-[#D62430] transition-all duration-300" style="width: {femState.progress * 100}%"></div>
+          </div>
+          <div class="text-[9px] font-mono text-slate-500">{(femState.progress * 100).toFixed(0)}% Complete</div>
+        </div>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+{#if femState.error}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="w-96 rounded-xl border border-red-950 bg-[#161011] p-6 shadow-2xl flex flex-col gap-4 text-center items-center">
+      <!-- Warning Icon -->
+      <div class="w-12 h-12 rounded-full bg-red-950/50 flex items-center justify-center border border-red-800 text-red-500">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      <div class="flex flex-col gap-2 w-full">
+        <div class="text-xs font-bold text-red-400 uppercase tracking-wider">Analysis Failed</div>
+        <div class="text-[10px] text-slate-300 leading-relaxed font-medium bg-[#0f0a0a] p-3 rounded-lg border border-red-950/50 text-left max-h-40 overflow-y-auto whitespace-pre-wrap font-mono">
+          {femState.error}
+        </div>
+      </div>
+      <button
+        onclick={() => { femState.error = null; }}
+        class="w-full rounded bg-[#D62430] py-2 text-xs font-bold uppercase tracking-wider text-white hover:bg-[#B01E28] transition-colors cursor-pointer border border-[#D62430]"
+      >
+        Dismiss
+      </button>
+    </div>
+  </div>
+{/if}
