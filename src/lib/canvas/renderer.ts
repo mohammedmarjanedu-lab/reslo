@@ -1125,7 +1125,8 @@ export function drawFEMContour(
   minVal: number,
   maxVal: number,
   opacity: number,
-  subdiv = 3
+  subdiv = 3,
+  invert = false
 ): void {
   if (nodeValues.size === 0) return;
   if (!isFinite(minVal) || !isFinite(maxVal)) return;
@@ -1158,7 +1159,8 @@ export function drawFEMContour(
           const L1_c = (n - i - j - 1) * invN, L3_c = (j + 1) * invN;
 
           const avg1 = (v0 * (L1_a + L1_b + L1_c) + v1 * (L2_a + L2_b + L2_a) + v2 * (L3_a + L3_a + L3_c)) / 3;
-          const ci = colorIndex(avg1, minVal, range);
+          const t1 = invert ? (maxVal - avg1) / range : (avg1 - minVal) / range;
+          const ci = t1 <= 0 ? 0 : t1 >= 1 ? 255 : (t1 * 255) | 0;
           const path = paths[ci];
 
           const x_a = p0.x * L1_a + p1.x * L2_a + p2.x * L3_a;
@@ -1177,7 +1179,8 @@ export function drawFEMContour(
           if (i + j + 1 < n) {
             const L1_d = (n - i - 1 - j - 1) * invN, L2_d = (i + 1) * invN, L3_d = (j + 1) * invN;
             const avg2 = (v0 * (L1_b + L1_c + L1_d) + v1 * (L2_b + L2_a + L2_d) + v2 * (L3_a + L3_c + L3_d)) / 3;
-            const ci2 = colorIndex(avg2, minVal, range);
+            const t2 = invert ? (maxVal - avg2) / range : (avg2 - minVal) / range;
+            const ci2 = t2 <= 0 ? 0 : t2 >= 1 ? 255 : (t2 * 255) | 0;
             const path2 = paths[ci2];
 
             const x_d = p0.x * L1_d + p1.x * L2_d + p2.x * L3_d;
@@ -1203,7 +1206,8 @@ export function drawFEMContour(
                        bilerp(vals[0], vals[1], vals[2], vals[3], ξ1, η0) +
                        bilerp(vals[0], vals[1], vals[2], vals[3], ξ1, η1) +
                        bilerp(vals[0], vals[1], vals[2], vals[3], ξ0, η1)) * 0.25;
-          const ci = colorIndex(avg, minVal, range);
+          const t = invert ? (maxVal - avg) / range : (avg - minVal) / range;
+          const ci = t <= 0 ? 0 : t >= 1 ? 255 : (t * 255) | 0;
           const path = paths[ci];
           const p00 = q4InterpPos(p, ξ0, η0);
           const p10 = q4InterpPos(p, ξ1, η0);
@@ -1318,7 +1322,8 @@ export function drawColorLegend(
   minVal: number,
   maxVal: number,
   label: string,
-  formatFn?: (v: number) => string
+  formatFn?: (v: number) => string,
+  invert = false
 ): void {
   if (!isFinite(minVal) || !isFinite(maxVal)) return;
   if (Math.abs(maxVal - minVal) < 1e-15) return;
@@ -1334,7 +1339,10 @@ export function drawColorLegend(
   for (let i = 0; i < steps; i++) {
     const t = i / steps;
     const val = minVal + t * (maxVal - minVal);
-    ctx.fillStyle = resultToColor(val, minVal, maxVal);
+    const range = maxVal - minVal;
+    const ct = invert ? (maxVal - val) / range : (val - minVal) / range;
+    const ci = ct <= 0 ? 0 : ct >= 1 ? 255 : (ct * 255) | 0;
+    ctx.fillStyle = _colorLUT[ci];
     ctx.fillRect(x + i * stepW, y, stepW + 0.5, h);
   }
 

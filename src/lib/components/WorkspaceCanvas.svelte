@@ -689,7 +689,7 @@
         ctx.clip('evenodd');
 
         if (globalMax !== globalMin) {
-          drawFEMContour(ctx, result.mesh, nodeValues, globalMin, globalMax, 0.75, 3);
+          drawFEMContour(ctx, result.mesh, nodeValues, globalMin, globalMax, 0.75, 3, femState.resultType === 'deflection');
         }
         if (femState.resultType === 'punching' && result.columnPunching && result.columnPunching.length > 0) {
           drawPunchingMarkers(ctx, result.mesh, model.columns, result.columnPunching);
@@ -719,7 +719,7 @@
         }
 
         if (globalMax !== globalMin) {
-          drawColorLegend(ctx, legendX, legendY, legendW, legendH, globalMin, globalMax, label);
+          drawColorLegend(ctx, legendX, legendY, legendW, legendH, globalMin, globalMax, label, undefined, femState.resultType === 'deflection');
         }
 
         ctx.setTransform(ppm * z, 0, 0, -ppm * z, ox, oy);
