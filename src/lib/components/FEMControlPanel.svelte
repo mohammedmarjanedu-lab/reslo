@@ -169,7 +169,7 @@
         step="0.1"
         value={uiState.femMeshSize}
         oninput={handleMeshSizeChange}
-        class="w-full accent-indigo-500"
+        class="reslo-slider"
       />
     </div>
 
@@ -186,7 +186,7 @@
           step="5"
           value={femState.deformedScale}
           oninput={handleDeformedScaleChange}
-          class="w-full accent-indigo-500"
+          class="reslo-slider"
         />
       </div>
     {/if}
@@ -243,3 +243,68 @@
     </div>
   {/if}
 </div>
+
+<style>
+  /* Custom styled premium range slider matching dark aesthetics */
+  input[type="range"].reslo-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: #2b2b2b;
+    border-radius: 2px;
+    outline: none;
+    margin: 8px 0;
+    transition: background 0.2s ease;
+  }
+
+  input[type="range"].reslo-slider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    background: #2b2b2b;
+    border-radius: 2px;
+  }
+
+  input[type="range"].reslo-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #D62430;
+    cursor: pointer;
+    margin-top: -4px;
+    box-shadow: 0 0 6px rgba(214, 36, 48, 0.4);
+    transition: transform 0.1s ease, background-color 0.2s ease;
+  }
+
+  input[type="range"].reslo-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    background: #ff2f3d;
+    box-shadow: 0 0 8px rgba(255, 47, 61, 0.6);
+  }
+
+  input[type="range"].reslo-slider::-moz-range-track {
+    width: 100%;
+    height: 4px;
+    background: #2b2b2b;
+    border-radius: 2px;
+  }
+
+  input[type="range"].reslo-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: none;
+    border-radius: 50%;
+    background: #D62430;
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(214, 36, 48, 0.4);
+    transition: transform 0.1s ease, background-color 0.2s ease;
+  }
+
+  input[type="range"].reslo-slider::-moz-range-thumb:hover {
+    transform: scale(1.2);
+    background: #ff2f3d;
+    box-shadow: 0 0 8px rgba(255, 47, 61, 0.6);
+  }
+</style>
