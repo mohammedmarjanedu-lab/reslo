@@ -294,6 +294,30 @@ select:hover, input:hover, select:focus, input:focus {
   color: var(--theme-text-secondary) !important;
 }
 
+/* FEM Progress Panel light theme overrides */
+.light-theme .fem-progress-panel {
+  background-color: var(--theme-bg-panel) !important;
+  border-color: var(--theme-border) !important;
+  color: var(--theme-text-primary) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
+}
+.light-theme .fem-progress-panel div {
+  color: var(--theme-text-primary) !important;
+}
+.light-theme .fem-progress-panel span {
+  color: var(--theme-text-secondary) !important;
+}
+.light-theme .fem-progress-panel .border-3 {
+  border-color: var(--theme-border) !important;
+}
+.light-theme .fem-progress-panel .border-t-\[\#D62430\] {
+  border-top-color: #D62430 !important;
+}
+.light-theme .fem-progress-panel .bg-\[\#222222\] {
+  background-color: var(--theme-bg-input) !important;
+}
+
+
 
 
 

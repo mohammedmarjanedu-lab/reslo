@@ -22,7 +22,7 @@
   import { graphStore } from './lib/stores/graphStore.svelte';
   import { floorLayers } from './lib/stores/floorLayers.svelte';
   import type { SlabFEMResult, SlabPolygon, ColumnElement, ShearWallElement, FEMWorkerInput, FEMWorkerOutput } from './lib/engine/types';
-  import { meshAndAnalyze, healthCheck, setApiBase, PyApiError } from './lib/engine/pyApi';
+  import { meshAndAnalyze, meshAndAnalyzeAllSlabs, healthCheck, setApiBase, PyApiError } from './lib/engine/pyApi';
   import { computeScaleLabel } from './lib/engine/scaleCalibrator';
 
   let worker: Worker | null = null;
@@ -292,31 +292,24 @@
     validSlabs: SlabPolygon[], allWalls: ShearWallElement[], columns: ColumnElement[],
     meshSize: number, gen: number, slabIdsAtStart: Set<string>
   ): Promise<void> {
-    const allResults: SlabFEMResult[] = [];
-    const allWarnings: string[] = [];
-    const allDisconnected: string[] = [];
-    for (let i = 0; i < validSlabs.length; i++) {
-      const slab = validSlabs[i];
-      femState.setProgress(i / validSlabs.length);
-      femState.refreshTimeout();
-      const res = await meshAndAnalyze(
-        slab, allWalls, columns, meshSize, 0.2, model.beams, model.dropPanels,
-        model.nonStructuralWalls, model.polylineNonStructuralWalls
-      );
-      allResults.push(toFrontendResult(slab.id, res.mesh, res.result, meshSize));
-      if (res.warnings.length > 0) allWarnings.push(...res.warnings);
-      if (res.disconnectedIds.length > 0) allDisconnected.push(...res.disconnectedIds);
-    }
+    femState.setProgress(0.1);
+    femState.refreshTimeout();
+    const primarySlab = validSlabs[0];
+    const poissonRatio = (primarySlab?.concreteGrade === 'M30' || (primarySlab?.elasticModulus && primarySlab.elasticModulus > 26e6)) ? 0.16 : 0.2;
+    const res = await meshAndAnalyzeAllSlabs(
+      validSlabs, allWalls, columns, meshSize, poissonRatio, model.beams, model.dropPanels,
+      model.nonStructuralWalls, model.polylineNonStructuralWalls
+    );
     femState.setProgress(1);
     if (gen !== femGen) return; // a newer analysis superseded this one
-    const stillValid = allResults.filter(r => slabIdsAtStart.has(r.slabId) && model.slabs.some(s => s.id === r.slabId));
+    const stillValid = res.results.filter(r => slabIdsAtStart.has(r.slabId) && model.slabs.some(s => s.id === r.slabId));
     if (stillValid.length === 0) return;
     femState.setResults(stillValid);
-    femState.warnings = allWarnings;
-    femState.disconnectedIds = new Set(allDisconnected);
+    femState.warnings = res.warnings;
+    femState.disconnectedIds = new Set(res.disconnectedIds);
     const elemCount = stillValid.reduce((s, r) => s + r.mesh.elements.length, 0);
     uiState.setStatusMessage(`FEM (OpenSeesPy): ${stillValid.length} slab(s), ${elemCount} elements`);
-    memoryStore.pushSolve({ solver: 'openseespy', slabCount: stillValid.length, elementCount: elemCount, durationMs: 0, success: true, warnings: allWarnings });
+    memoryStore.pushSolve({ solver: 'openseespy', slabCount: stillValid.length, elementCount: elemCount, durationMs: 0, success: true, warnings: res.warnings });
   }
 
   function runWorkerSolver(validSlabs: SlabPolygon[], columns: ColumnElement[], walls: ShearWallElement[], meshSize: number, gen: number, slabIdsAtStart: Set<string>): Promise<void> {
@@ -733,7 +726,7 @@
 {/if}
 
 {#if femState.isComputing}
-  <div class="fixed bottom-4 right-4 z-50 w-72 rounded-xl border border-[#333333] bg-[#141414] p-4 shadow-2xl flex items-center gap-3 text-left pointer-events-auto">
+  <div class="fem-progress-panel fixed bottom-4 right-4 z-50 w-72 rounded-xl border border-[#333333] bg-[#141414] p-4 shadow-2xl flex items-center gap-3 text-left pointer-events-auto">
     <!-- Premium Spinner -->
     <div class="relative w-8 h-8 shrink-0">
       <div class="absolute inset-0 rounded-full border-3 border-[#222222]"></div>
