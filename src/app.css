@@ -1,0 +1,281 @@
+@import "tailwindcss";
+
+body {
+  margin: 0;
+  overflow: hidden;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #000000;
+  color: #ffffff;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 5px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.15); border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* Input hover/focus: show primary color border across all themes */
+select:hover, input:hover, select:focus, input:focus {
+  border-color: #D62430 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 1px #D62430 !important;
+}
+
+/* Light Theme Variables and Class Overrides */
+.light-theme {
+  --theme-bg-main: #ffffff;
+  --theme-bg-panel: #ffffff;
+  --theme-bg-input: #f5f5f5;
+  --theme-border: #e0e0e0;
+  --theme-text-primary: #000000;
+  --theme-text-secondary: #333333;
+  --theme-text-muted: #666666;
+  --theme-bg-hover: #f0f0f0;
+  background-color: var(--theme-bg-main) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.light-theme .bg-slate-900,
+.light-theme .bg-slate-950,
+.light-theme .bg-slate-900\/40 {
+  background-color: var(--theme-bg-main) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.light-theme .bg-slate-800,
+.light-theme .bg-slate-800\/60,
+.light-theme .bg-slate-800\/95 {
+  background-color: var(--theme-bg-panel) !important;
+  border-color: var(--theme-border) !important;
+  color: var(--theme-text-primary) !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05) !important;
+}
+
+.light-theme .bg-slate-700 {
+  background-color: var(--theme-bg-input) !important;
+  border-color: var(--theme-border) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.light-theme .border-slate-700,
+.light-theme .border-slate-700\/50,
+.light-theme .border-slate-600,
+.light-theme .border-slate-600\/50 {
+  border-color: var(--theme-border) !important;
+}
+
+.light-theme .text-slate-300,
+.light-theme .text-slate-200 {
+  color: var(--theme-text-primary) !important;
+}
+
+.light-theme .text-slate-400 {
+  color: var(--theme-text-secondary) !important;
+}
+
+.light-theme .text-slate-500 {
+  color: var(--theme-text-muted) !important;
+}
+
+.light-theme select,
+.light-theme input {
+  background-color: var(--theme-bg-input) !important;
+  color: var(--theme-text-primary) !important;
+  border-color: var(--theme-border) !important;
+}
+
+.light-theme input::placeholder {
+  color: var(--theme-text-muted) !important;
+}
+
+.light-theme ::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.12) !important;
+}
+
+.light-theme ::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.22) !important;
+}
+
+/* Sidebar panel overrides for light theme */
+.light-theme .bg-\[\#000000\] {
+  background-color: #ffffff !important;
+}
+.light-theme .border-\[\#222222\] {
+  border-color: #e0e0e0 !important;
+}
+.light-theme .bg-\[\#1a1a1a\] {
+  background-color: #ffffff !important;
+}
+.light-theme .text-\[\#ffffff\] {
+  color: #000000 !important;
+}
+.light-theme .border-\[\#333333\] {
+  border-color: #e0e0e0 !important;
+}
+.light-theme .bg-\[\#333333\] {
+  background-color: #f5f5f5 !important;
+  color: #000000 !important;
+}
+.light-theme .border-\[\#444444\] {
+  border-color: #d0d0d0 !important;
+}
+.light-theme .text-\[\#666666\] {
+  color: #999999 !important;
+}
+.light-theme .bg-slate-800,
+.light-theme .bg-slate-800\/60,
+.light-theme .bg-slate-800\/95 {
+  background-color: #ffffff !important;
+  border-color: #e0e0e0 !important;
+  color: #000000 !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05) !important;
+}
+
+/* Semantic Sidebar & Panel Overrides */
+.sidebar {
+  background-color: #000000 !important;
+  border-color: #222222 !important;
+}
+.sidebar-panel {
+  background-color: #1a1a1a !important;
+  border-color: #333333 !important;
+}
+
+.light-theme .sidebar {
+  background-color: #ffffff !important;
+  border-color: #e0e0e0 !important;
+}
+.light-theme .sidebar-panel {
+  background-color: #ffffff !important;
+  border-color: #e0e0e0 !important;
+}
+
+.light-theme .sidebar label,
+.light-theme .sidebar p,
+.light-theme .sidebar h1,
+.light-theme .sidebar h2,
+.light-theme .sidebar h3,
+.light-theme .sidebar span:not(.text-green-400):not(.text-green-500):not(.logo-text) {
+  color: #000000 !important;
+}
+
+.light-theme .logo-text {
+  color: #D62430 !important;
+}
+
+/* Sidebar Inputs and Selects in Light Theme */
+.light-theme .sidebar select,
+.light-theme .sidebar input {
+  background-color: #f5f5f5 !important;
+  color: #000000 !important;
+  border-color: #e0e0e0 !important;
+}
+.light-theme .sidebar select option {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* text-white on light panel backgrounds becomes black in light theme */
+.light-theme .text-white {
+  color: #000000 !important;
+}
+
+/* Exception: text-white on any colored background keeps white text */
+.light-theme .bg-\[\#D62430\] {
+  color: #ffffff !important;
+}
+.light-theme .bg-\[\#D62430\] .text-white,
+.light-theme .bg-\[\#D62430\].text-white,
+.light-theme .bg-indigo-700 .text-white,
+.light-theme .bg-indigo-700.text-white,
+.light-theme .bg-green-600 .text-white,
+.light-theme .bg-green-600.text-white,
+.light-theme .bg-green-500 .text-white,
+.light-theme .bg-green-500.text-white {
+  color: #ffffff !important;
+}
+
+/* Sidebar button base styles in light theme */
+.light-theme .sidebar button:not(.active) {
+  background-color: #ffffff !important;
+  border-color: #e0e0e0 !important;
+  color: #000000 !important;
+}
+.light-theme .sidebar button:not(.active) * {
+  color: #000000 !important;
+}
+/* Keep red background + red border for primary action buttons in light theme */
+.light-theme .sidebar button.bg-\[\#D62430\] {
+  background-color: #D62430 !important;
+  border-color: #D62430 !important;
+  color: #ffffff !important;
+}
+
+/* Theme toggle button specific overrides */
+.light-theme .sidebar button.theme-toggle {
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+.light-theme .sidebar button.theme-toggle:hover {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #000000 !important;
+}
+.light-theme .sidebar button.theme-toggle * {
+  color: inherit !important;
+}
+
+/* Active buttons in both light & dark themes */
+.sidebar button.active {
+  background-color: #D62430 !important;
+  border-color: #D62430 !important;
+  color: #ffffff !important;
+}
+.sidebar button.active * {
+  color: #ffffff !important;
+}
+
+.light-theme .sidebar button.active {
+  background-color: #D62430 !important;
+  border-color: #D62430 !important;
+  color: #ffffff !important;
+}
+.light-theme .sidebar button.active * {
+  color: #ffffff !important;
+}
+.light-theme .sidebar button.active:hover {
+  background-color: #B01E28 !important;
+  border-color: #B01E28 !important;
+}
+
+/* Hover style for sidebar buttons in both themes */
+.sidebar button:hover:not(.theme-toggle) {
+  background-color: #D62430 !important;
+  border-color: #D62430 !important;
+  color: #ffffff !important;
+}
+.sidebar button:hover:not(.theme-toggle) * {
+  color: #ffffff !important;
+}
+
+.light-theme .sidebar button:hover:not(.theme-toggle) {
+  background-color: #D62430 !important;
+  border-color: #D62430 !important;
+  color: #ffffff !important;
+}
+.light-theme .sidebar button:hover:not(.theme-toggle) * {
+  color: #ffffff !important;
+}
+
+/* Hover/Focus outline for selects and inputs in light theme */
+.light-theme .sidebar select:hover,
+.light-theme .sidebar input:hover,
+.light-theme .sidebar select:focus,
+.light-theme .sidebar input:focus {
+  border-color: #D62430 !important;
+  box-shadow: 0 0 0 1px #D62430 !important;
+  outline: none !important;
+}
+
+
+
