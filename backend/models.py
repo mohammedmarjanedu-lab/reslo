@@ -104,6 +104,7 @@ class AnalysisRequest(BaseModel):
     columnDepths: List[float] = []
     columnShapes: List[str] = []
     columnDiameters: List[float] = []
+    columnGrades: List[str] = []
     columnBoundaryConditions: List[str] = []
     wallBoundaryConditions: List[str] = []
     # Beam data: parallel arrays for N beam elements

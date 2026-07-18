@@ -129,6 +129,7 @@ export async function meshAndAnalyze(
   const colDepths: number[] = [];
   const colShapes: string[] = [];
   const colDiameters: number[] = [];
+  const colGrades: string[] = [];
   const COL_SNAP_TOL = 0.5;
   const skippedColumns: number[] = [];
   const skippedColumnIds: string[] = [];
@@ -158,6 +159,7 @@ export async function meshAndAnalyze(
     colStiffnesses.push(4 * E_col * I / H);
     colShapes.push(c.shape || 'rectangular');
     colDiameters.push((c.diameter || 500) / 1000);
+    colGrades.push(c.concreteGrade || 'M25');
   }
 
   const concreteDensity = 25; // kN/m³
@@ -203,6 +205,7 @@ export async function meshAndAnalyze(
     columnHeights: colHeights, columnStiffnesses: colStiffnesses,
     columnWidths: colWidths, columnDepths: colDepths,
     columnShapes: colShapes, columnDiameters: colDiameters,
+    columnGrades: colGrades,
     columnBoundaryConditions: columns.map(c => c.boundaryCondition || 'fixed-fixed'),
     wallBoundaryConditions: walls.map(w => w.boundaryCondition || 'fixed-free'),
     beamNodeIdA, beamNodeIdB, beamWidths, beamDepths, beamElasticModuli,

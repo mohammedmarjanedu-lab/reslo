@@ -352,11 +352,13 @@
             reject(new Error(data.error ?? 'Unknown worker error'));
           }
         };
+        const primarySlab = validSlabs[0];
+        const poissonRatio = (primarySlab?.concreteGrade === 'M30' || (primarySlab?.elasticModulus && primarySlab.elasticModulus > 26e6)) ? 0.16 : 0.2;
         const input: FEMWorkerInput = JSON.parse(JSON.stringify({
           type: 'ANALYZE', slabs: validSlabs, columns, walls,
           polylineWalls: model.polylineWalls, beams: model.beams, dropPanels: model.dropPanels,
           nonStructuralWalls: model.nonStructuralWalls, polylineNonStructuralWalls: model.polylineNonStructuralWalls,
-          meshSize, poissonRatio: 0.2, useQ8: false
+          meshSize, poissonRatio, useQ8: false
         }));
         worker.postMessage(input);
       } catch (e) { reject(e); }

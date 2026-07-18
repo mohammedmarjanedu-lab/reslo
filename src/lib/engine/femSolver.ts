@@ -750,7 +750,8 @@ export function analyzeAllSlabs(
 
   for (const { slab, mesh } of slabMeshes) {
     const localMap = nodeMap.get(slab.id)!;
-    const E = slab.elasticModulus * (slab.crackingModifier ?? 0.25);
+    let E = slab.elasticModulus * (slab.crackingModifier ?? 0.25);
+    if (E > 1e8) E /= 1000.0; // Normalize Pa to kPa
     const ν = poissonRatio;
     const t = slab.thickness;
     const q = slab.uniformLoad + (slab.partitionLoad ?? 0) + slab.concreteDensity * t;
@@ -890,7 +891,9 @@ export function analyzeAllSlabs(
   const searchTol = meshSize * 0.6;
   const colTol = meshSize * 1.2;
 
-  // Point supports (columns)
+  // Point supports (columns) — Model as elastic column springs matching OpenSeesPy & ETABS
+  const columnPunchingMap = new Map<string, { K_z: number; col: ColumnElement; nodeIdx: number }>();
+
   for (const col of columns) {
     let nearSlab = false;
     for (const { slab } of slabMeshes) {
@@ -907,9 +910,35 @@ export function analyzeAllSlabs(
         if (d < minD) { minD = d; ni = i; }
       }
       if (ni >= 0 && minD < colTol) {
-        bc[ni * 3] = true;     // w
-        bc[ni * 3 + 1] = true; // θx
-        bc[ni * 3 + 2] = true; // θy
+        const wcol = col.width || 0.3;
+        const dcol = col.depth || 0.3;
+        const Hcol = col.height || 3.0;
+        let E_col = col.elasticModulus || 25e6; // kPa
+        if (E_col > 1e8) E_col /= 1000.0;
+
+        let A_col = wcol * dcol;
+        let Ix = wcol * Math.pow(dcol, 3) / 12.0;
+        let Iy = dcol * Math.pow(wcol, 3) / 12.0;
+        if (col.shape === 'circular') {
+          const diam = col.diameter || 0.5;
+          A_col = Math.PI * Math.pow(diam, 2) / 4.0;
+          Ix = Math.PI * Math.pow(diam, 4) / 64.0;
+          Iy = Ix;
+        }
+
+        const K_z = E_col * A_col / Hcol;
+        const K_rx = 4.0 * E_col * Ix / Hcol;
+        const K_ry = 4.0 * E_col * Iy / Hcol;
+
+        const r_w = ni * 3;
+        const r_rx = ni * 3 + 1;
+        const r_ry = ni * 3 + 2;
+
+        K_band[r_w][0] += K_z;
+        K_band[r_rx][0] += K_rx;
+        K_band[r_ry][0] += K_ry;
+
+        columnPunchingMap.set(col.id, { K_z, col, nodeIdx: ni });
       }
     }
   }
@@ -1092,9 +1121,9 @@ export function analyzeAllSlabs(
         κxy += dN_dy[i] * u_e[3 * i + 1] + dN_dx[i] * u_e[3 * i + 2];
       }
 
-      const mx = (Dmat[0][0] * κx + Dmat[0][1] * κy) / 1000.0;
-      const my = (Dmat[1][0] * κx + Dmat[1][1] * κy) / 1000.0;
-      const mxy = (Dmat[2][2] * κxy) / 1000.0;
+      const mx = (Dmat[0][0] * κx + Dmat[0][1] * κy);
+      const my = (Dmat[1][0] * κx + Dmat[1][1] * κy);
+      const mxy = (Dmat[2][2] * κxy);
 
       momentMx.push({ elementId: elem.id, value: mx });
       momentMy.push({ elementId: elem.id, value: my });
@@ -1130,6 +1159,50 @@ export function analyzeAllSlabs(
       shears.push({ elementId: elem.id, vx, vy, v1, angle: s_angle });
     }
 
+    // Compute column punching shear stresses (IS 456 / ETABS standard)
+    const columnPunching: ColumnPunchingResult[] = [];
+    const cover = 0.025;
+    const d_eff = Math.max(0.05, t - cover - 0.012);
+
+    for (const [colId, info] of columnPunchingMap) {
+      const { K_z, col, nodeIdx } = info;
+      const wz_col = Math.abs(u_global[nodeIdx * 3]);
+      const V_col = K_z * wz_col; // kN
+      const force_kN = V_col;
+      const V_col_N = V_col * 1000.0;
+
+      const wcol = col.width || 0.3;
+      const dcol = col.depth || 0.3;
+      let b0 = 2.0 * (wcol + dcol + 2.0 * d_eff);
+      if (col.shape === 'circular') {
+        const diam = col.diameter || 0.5;
+        b0 = Math.PI * (diam + d_eff);
+      }
+
+      const v_u_Pa = (b0 > 0 && d_eff > 0) ? V_col_N / (b0 * d_eff) : 0;
+      const v_u_MPa = v_u_Pa / 1e6;
+
+      let fck_MPa = 30.0;
+      if (col.concreteGrade && col.concreteGrade.startsWith('M')) {
+        fck_MPa = parseFloat(col.concreteGrade.replace('M', '')) || 30.0;
+      }
+      const beta_c = Math.max(wcol / dcol, dcol / wcol);
+      const ks = Math.min(1.0, 0.5 + beta_c);
+      const v_c_MPa = ks * 0.25 * Math.sqrt(fck_MPa);
+
+      const ratio = v_c_MPa > 0 ? v_u_MPa / v_c_MPa : 0;
+      const status = ratio < 0.7 ? 'OK' : ratio < 1.0 ? 'WARNING' : 'FAIL';
+
+      columnPunching.push({
+        nodeId: nodeIdx + 1,
+        force_kN: Math.round(force_kN * 100) / 100,
+        stress_MPa: Math.round(v_u_MPa * 1000) / 1000,
+        capacity_MPa: Math.round(v_c_MPa * 1000) / 1000,
+        ratio: Math.round(ratio * 1000) / 1000,
+        status
+      });
+    }
+
     let minWz = Infinity, maxWz = -Infinity;
     let minMx = Infinity, maxMx = -Infinity;
     let minMy = Infinity, maxMy = -Infinity;
@@ -1155,7 +1228,7 @@ export function analyzeAllSlabs(
       mesh,
       nodeDeflections,
       momentMx, momentMy, momentMxy,
-      stresses, shears,
+      stresses, shears, columnPunching,
       minWz: isFinite(minWz) ? minWz : 0,
       maxWz: isFinite(maxWz) ? maxWz : 0,
       minMx: isFinite(minMx) ? minMx : 0,

@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "projectName": "project",
+  "createdAt": 1784381000627,
+  "modifiedAt": 1784381737439,
+  "concreteGrade": "M25",
+  "rebarGrade": "Fe415",
+  "elements": {
+    "columns": [
+      {
+        "id": "C-2",
+        "position": {
+          "x": 2,
+          "y": 2
+        },
+        "width": 0.5,
+        "depth": 0.5,
+        "height": 3,
+        "rotation": 0,
+        "elasticModulus": 27386127.875258304,
+        "concreteDensity": 25,
+        "label": "C-01",
+        "boundaryCondition": "fixed-fixed",
+        "shape": "rectangular",
+        "diameter": 0.5,
+        "concreteGrade": "M30"
+      },
+      {
+        "id": "C-3",
+        "position": {
+          "x": 5,
+          "y": 2
+        },
+        "width": 0.5,
+        "depth": 0.5,
+        "height": 3,
+        "rotation": 0,
+        "elasticModulus": 27386127.875258304,
+        "concreteDensity": 25,
+        "label": "C-02",
+        "boundaryCondition": "fixed-fixed",
+        "shape": "rectangular",
+        "diameter": 0.5,
+        "concreteGrade": "M30"
+      },
+      {
+        "id": "C-4",
+        "position": {
+          "x": 5,
+          "y": 5
+        },
+        "width": 0.5,
+        "depth": 0.5,
+        "height": 3,
+        "rotation": 0,
+        "elasticModulus": 27386127.875258304,
+        "concreteDensity": 25,
+        "label": "C-03",
+        "boundaryCondition": "fixed-fixed",
+        "shape": "rectangular",
+        "diameter": 0.5,
+        "concreteGrade": "M30"
+      },
+      {
+        "id": "C-5",
+        "position": {
+          "x": 2,
+          "y": 5
+        },
+        "width": 0.5,
+        "depth": 0.5,
+        "height": 3,
+        "rotation": 0,
+        "elasticModulus": 27386127.875258304,
+        "concreteDensity": 25,
+        "label": "C-04",
+        "boundaryCondition": "fixed-fixed",
+        "shape": "rectangular",
+        "diameter": 0.5,
+        "concreteGrade": "M30"
+      }
+    ],
+    "walls": [],
+    "polylineWalls": [],
+    "nonStructuralWalls": [],
+    "polylineNonStructuralWalls": [],
+    "beams": [],
+    "slabs": [
+      {
+        "id": "S-1",
+        "label": "S-01",
+        "vertices": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 7,
+            "y": 0
+          },
+          {
+            "x": 7,
+            "y": 7
+          },
+          {
+            "x": 0,
+            "y": 7
+          }
+        ],
+        "holes": [],
+        "thickness": 0.2,
+        "concreteDensity": 25,
+        "uniformLoad": 5,
+        "partitionLoad": 5,
+        "elasticModulus": 27386127.875258304,
+        "concreteGrade": "M30",
+        "crackingModifier": 0.25
+      }
+    ],
+    "dropPanels": [],
+    "dimensions": []
+  },
+  "view": {
+    "offsetX": 342.12172132861275,
+    "offsetY": 513.8690444619583,
+    "zoom": 0.6152206107284716
+  },
+  "calibration": {
+    "isCalibrated": false,
+    "pixelsPerMeter": 100
+  },
+  "hiddenElementIds": [],
+  "lockedElementIds": []
+}
