@@ -66,7 +66,7 @@ def test_simply_supported_square_plate():
     assert abs(max_w_custom - max_w_ops) / max_w_custom < 0.02
     
     # Verify moments match within 3% (in kNm/m)
-    max_mx_custom = max(abs(m.mx) for m in res_custom.elementMoments) / 1000.0
+    max_mx_custom = max(abs(m.mx) for m in res_custom.elementMoments)
     max_mx_ops = max(abs(m.mx) for m in res_ops.elementMoments)
     print(f"SS Max Mx Custom: {max_mx_custom:.2f} kNm/m, OpenSees: {max_mx_ops:.2f} kNm/m")
     assert abs(max_mx_custom - max_mx_ops) / max_mx_custom < 0.03

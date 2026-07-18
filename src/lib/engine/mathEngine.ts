@@ -214,6 +214,21 @@ export function computeGlobalMetrics(
       allSlabVerts = allSlabVerts.concat(slab.vertices);
     }
   }
+  // Drop panel additional dead load contributes to CM
+  if (dropPanels) {
+    for (const dp of dropPanels) {
+      if (dp.vertices.length >= 3 && dp.drop > 0) {
+        const dpArea = Math.abs(polygonSignedArea(dp.vertices));
+        const dpCentroid = polygonCentroid(dp.vertices);
+        const dpDensity = dp.concreteDensity ?? 25; // kN/m³
+        const dpWeight = dpArea * dp.drop * dpDensity;
+        cmNumX += dpWeight * dpCentroid.x;
+        cmNumY += dpWeight * dpCentroid.y;
+        cmDen += dpWeight;
+        slabGravity += dpWeight;
+      }
+    }
+  }
   // Partition wall line loads contribute to CM (only if inside a slab)
   if (nonStructuralWalls) {
     for (const w of nonStructuralWalls) {

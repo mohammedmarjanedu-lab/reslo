@@ -438,7 +438,16 @@ def _calculate_cr_analytical(request: AnalysisRequest) -> Tuple[float, float]:
         xc = (n1.x + n2.x + n3.x) / 3.0
         yc = (n1.y + n2.y + n3.y) / 3.0
         
-        weight = slab_self_weight * area
+        # Check if triangle centroid falls inside a drop panel
+        h_eff = t_slab
+        if request.dropPanels:
+            for dp in request.dropPanels:
+                poly = [(v.x, v.y) for v in dp.vertices]
+                if len(poly) >= 3 and _point_in_polygon(xc, yc, poly):
+                    h_eff = t_slab + dp.drop
+                    break
+
+        weight = concrete_density * h_eff * area
         W_slab += weight
         slab_cx_sum += weight * xc
         slab_cy_sum += weight * yc
