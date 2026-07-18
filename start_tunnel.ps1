@@ -51,12 +51,13 @@ Stop-Process -Name "cloudflared" -Force -ErrorAction SilentlyContinue
 
 # 3. Start the FastAPI backend
 Write-Host "Starting FastAPI backend..." -ForegroundColor Cyan
-$backendJob = Start-Process python -ArgumentList "backend/main.py" -WindowStyle Hidden -PassThru
+$pyExe = (Get-Command py).Source
+$backendJob = Start-Process $pyExe -ArgumentList "-3.12", "backend/main.py" -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -PassThru
 
 # 4. Start Backend Cloudflare Tunnel
 Write-Host "Starting Backend Cloudflare Tunnel..." -ForegroundColor Cyan
 if (Test-Path "tunnel.log") { Remove-Item "tunnel.log" -Force -ErrorAction SilentlyContinue }
-$tunnelBackend = Start-Process "C:\Program Files (x86)\cloudflared\cloudflared.exe" -ArgumentList "tunnel --url http://127.0.0.1:8000" -RedirectStandardError "tunnel.log" -WindowStyle Hidden -PassThru
+$tunnelBackend = Start-Process "C:\Program Files (x86)\cloudflared\cloudflared.exe" -ArgumentList "tunnel --url http://127.0.0.1:8000" -WorkingDirectory $PSScriptRoot -RedirectStandardError "tunnel.log" -WindowStyle Hidden -PassThru
 
 # 5. Wait for Backend Tunnel and extract the URL to configure .env
 Write-Host "Waiting for Backend Tunnel to connect..." -ForegroundColor Cyan
@@ -69,13 +70,13 @@ if ($backendUrl) {
     
     # 6. Start Svelte frontend dev server (Vite loads correct VITE_API_URL on start!)
     Write-Host "Starting Svelte frontend (Vite)..." -ForegroundColor Cyan
-    $frontendJob = Start-Process npm.cmd -ArgumentList "run dev" -WindowStyle Hidden -PassThru
+    $frontendJob = Start-Process npm.cmd -ArgumentList "run dev" -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -PassThru
     Start-Sleep -Seconds 2
 
     # 7. Start Frontend Cloudflare Tunnel
     Write-Host "Starting Frontend Cloudflare Tunnel..." -ForegroundColor Cyan
     if (Test-Path "tunnel_frontend.log") { Remove-Item "tunnel_frontend.log" -Force -ErrorAction SilentlyContinue }
-    $tunnelFrontend = Start-Process "C:\Program Files (x86)\cloudflared\cloudflared.exe" -ArgumentList "tunnel --url http://localhost:5173 --http-host-header localhost" -RedirectStandardError "tunnel_frontend.log" -WindowStyle Hidden -PassThru
+    $tunnelFrontend = Start-Process "C:\Program Files (x86)\cloudflared\cloudflared.exe" -ArgumentList "tunnel --url http://localhost:5173 --http-host-header localhost" -WorkingDirectory $PSScriptRoot -RedirectStandardError "tunnel_frontend.log" -WindowStyle Hidden -PassThru
     
     Write-Host "Waiting for Frontend Tunnel to connect..." -ForegroundColor Cyan
     $frontendUrl = Get-TunnelUrl "tunnel_frontend.log"

@@ -2384,6 +2384,11 @@
   });
 
   $effect(() => {
+    uiState.theme;
+    dirty = true;
+  });
+
+  $effect(() => {
     if (model.slabs.length === 0 && model.dropPanels.length === 0 && model.walls.length === 0 && model.polylineWalls.length === 0 && model.beams.length === 0 && model.columns.length === 0 && model.dimensions.length === 0) {
       dirty = true;
       localDrag = { type: 'idle' };
