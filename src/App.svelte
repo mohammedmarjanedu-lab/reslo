@@ -566,7 +566,7 @@
     </div>
 
     <!-- Fixed bottom section -->
-    <div class="p-2.5 border-t border-[#222222] bg-[#0c0c0c] flex flex-col gap-1 shrink-0">
+    <div class="calculation-engine-panel p-2.5 border-t border-[#222222] bg-[#0c0c0c] flex flex-col gap-1 shrink-0">
       <div class="text-[10px] font-bold text-[#888888] uppercase tracking-wider px-1">Calculation Engine</div>
       <div class="flex items-center gap-1.5 px-1 py-0.5">
         <span class="w-1.5 h-1.5 rounded-full {uiState.backendConnected ? 'bg-green-500 shadow-[0_0_6px_#10b981]' : 'bg-yellow-500 shadow-[0_0_6px_#f59e0b]'}"></span>

@@ -281,5 +281,19 @@ select:hover, input:hover, select:focus, input:focus {
   outline: none !important;
 }
 
+/* Calculation Engine Panel light theme overrides */
+.light-theme .calculation-engine-panel {
+  background-color: var(--theme-bg-panel) !important;
+  border-color: var(--theme-border) !important;
+  color: var(--theme-text-primary) !important;
+}
+.light-theme .calculation-engine-panel span {
+  color: var(--theme-text-primary) !important;
+}
+.light-theme .calculation-engine-panel div {
+  color: var(--theme-text-secondary) !important;
+}
+
+
 
 
