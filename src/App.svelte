@@ -362,13 +362,12 @@
 
   // AI Loop Engine + Perf Probe
   $effect(() => {
-    loopEngine.start();
     startPerfProbe((fps, frameTime) => {
       if (typeof window !== 'undefined') {
         (window as any).__resloPerf = { fps, frameTime, dirty: true };
       }
     });
-    return () => { loopEngine.stop(); perfProbeStop(); };
+    return () => { perfProbeStop(); };
   });
 
   function handleResize(): void {
