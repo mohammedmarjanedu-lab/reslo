@@ -30,15 +30,14 @@
   let apiAvailable = false;
   let healthInterval: ReturnType<typeof setInterval> | null = null;
 
-// Phase 3g: Wire OBSERVE - start loop engine & perf probe
+// Phase 3g: Wire OBSERVE - start perf probe; the AI loop starts from its own UI
   $effect(() => {
-    loopEngine.start();
     startPerfProbe((fps, frameTime) => {
       if (typeof window !== 'undefined') {
         (window as any).__resloPerf = { fps, frameTime, dirty: true };
       }
     });
-    return () => { loopEngine.stop(); perfProbeStop(); };
+    return () => { perfProbeStop(); };
   });
 
   function checkBackend() {
