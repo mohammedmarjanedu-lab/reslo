@@ -228,12 +228,13 @@
       try {
         await meshAndAnalyzeBackend(validSlabs, allWalls, columns, meshSize, gen, slabIdsAtStart);
         if (gen !== femGen) return;
-        return; // backend result is authoritative; no fallback needed
+        return; // backend result is authoritative
       } catch (e) {
         const msg = e instanceof PyApiError ? e.message : String(e);
-        console.warn(`[Reslo] OpenSeesPy failed, falling back to in-browser solver: ${msg}`);
-        uiState.setStatusMessage(`OpenSeesPy unavailable — using in-browser solver`);
-        // fall through to worker solver below
+        console.warn(`[Reslo] OpenSeesPy failed: ${msg}`);
+        femState.setError(`OpenSeesPy Solver Failed: ${msg}`);
+        uiState.setStatusMessage(`OpenSeesPy failed: ${msg}`);
+        return; // Do not fall back to in-browser solver if OpenSeesPy is connected
       }
     }
 
