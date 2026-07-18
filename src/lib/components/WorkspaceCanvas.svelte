@@ -28,54 +28,64 @@
 
   function bumpModelGen() { _modelGen++; }
 
-  // ─── P1: Offscreen cache for static joint dots + midpoint diamonds ───
-  // Rebuilt only when the model OR the view transform (zoom/pan/ppm) changes.
-  let _jointCanvas: HTMLCanvasElement | null = null;
-  let _jointCtx: CanvasRenderingContext2D | null = null;
-  let _jointCacheKey = '';
+  // ─── P1: Cache joint positions (data, not canvas) — drawn with theme color each frame ───
+  interface JointDot { x: number; y: number; }
+  interface JointDiamond { x: number; y: number; }
+  let _cachedDots: JointDot[] = [];
+  let _cachedDiamonds: JointDiamond[] = [];
+  let _jointDataKey = '';
 
-  function buildJointCache(W: number, H: number, ppm: number, z: number, ox: number, oy: number): void {
-    const key = `${W}x${H}|${ppm}|${z}|${ox}|${oy}|${_modelGen}|${uiState.theme}`;
-    if (_jointCacheKey === key && _jointCanvas) return;
-    _jointCacheKey = key;
+  function buildJointData(): void {
+    const key = `${_modelGen}`;
+    if (_jointDataKey === key) return;
+    _jointDataKey = key;
 
-    if (!_jointCanvas) {
-      _jointCanvas = document.createElement('canvas');
-      _jointCtx = _jointCanvas.getContext('2d');
-    }
-    _jointCanvas.width = W;
-    _jointCanvas.height = H;
-    const jc = _jointCtx!;
-    jc.setTransform(1, 0, 0, 1, 0, 0);
-    jc.clearRect(0, 0, W, H);
-    jc.setTransform(ppm * z, 0, 0, -ppm * z, ox, oy);
-
-    const jointRadius = 0.06;
-    const midRadius = 0.04;
-    jc.fillStyle = uiState.theme === 'light' ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.6)';
-
-    const dot = (x: number, y: number) => { jc.beginPath(); jc.arc(x, y, jointRadius, 0, Math.PI * 2); jc.fill(); };
-    const diamond = (x: number, y: number) => {
-      jc.save(); jc.translate(x, y); jc.rotate(Math.PI / 4);
-      jc.fillRect(-midRadius, -midRadius, midRadius * 2, midRadius * 2);
-      jc.restore();
-    };
+    const dots: JointDot[] = [];
+    const diamonds: JointDiamond[] = [];
     const mid = (a: Point2D, b: Point2D) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 
-    for (const c of model.columns) dot(c.position.x, c.position.y);
-    for (const w of model.walls) { const m = mid(w.startPoint, w.endPoint); dot(w.startPoint.x, w.startPoint.y); dot(w.endPoint.x, w.endPoint.y); diamond(m.x, m.y); }
-    for (const pw of model.polylineWalls) {
-      for (const v of pw.vertices) dot(v.x, v.y);
-      for (let i = 0; i < pw.vertices.length - 1; i++) { const m = mid(pw.vertices[i], pw.vertices[i + 1]); diamond(m.x, m.y); }
+    for (const c of model.columns) dots.push({ x: c.position.x, y: c.position.y });
+    for (const w of model.walls) {
+      dots.push({ x: w.startPoint.x, y: w.startPoint.y });
+      dots.push({ x: w.endPoint.x, y: w.endPoint.y });
+      const m = mid(w.startPoint, w.endPoint);
+      diamonds.push({ x: m.x, y: m.y });
     }
-    for (const b of model.beams) { dot(b.startPoint.x, b.startPoint.y); dot(b.endPoint.x, b.endPoint.y); const mb = mid(b.startPoint, b.endPoint); diamond(mb.x, mb.y); }
+    for (const pw of model.polylineWalls) {
+      for (const v of pw.vertices) dots.push({ x: v.x, y: v.y });
+      for (let i = 0; i < pw.vertices.length - 1; i++) { const m = mid(pw.vertices[i], pw.vertices[i + 1]); diamonds.push({ x: m.x, y: m.y }); }
+    }
+    for (const b of model.beams) {
+      dots.push({ x: b.startPoint.x, y: b.startPoint.y });
+      dots.push({ x: b.endPoint.x, y: b.endPoint.y });
+      const mb = mid(b.startPoint, b.endPoint);
+      diamonds.push({ x: mb.x, y: mb.y });
+    }
     for (const slab of model.slabs) {
-      for (const v of slab.vertices) dot(v.x, v.y);
-      for (let i = 0; i < slab.vertices.length; i++) { const m = mid(slab.vertices[i], slab.vertices[(i + 1) % slab.vertices.length]); diamond(m.x, m.y); }
-      for (const hole of slab.holes) for (let i = 0; i < hole.length; i++) { const m = mid(hole[i], hole[(i + 1) % hole.length]); diamond(m.x, m.y); }
+      for (const v of slab.vertices) dots.push({ x: v.x, y: v.y });
+      for (let i = 0; i < slab.vertices.length; i++) { const m = mid(slab.vertices[i], slab.vertices[(i + 1) % slab.vertices.length]); diamonds.push({ x: m.x, y: m.y }); }
+      for (const hole of slab.holes) for (let i = 0; i < hole.length; i++) { const m = mid(hole[i], hole[(i + 1) % hole.length]); diamonds.push({ x: m.x, y: m.y }); }
     }
     for (const dp of model.dropPanels) {
-      for (let i = 0; i < dp.vertices.length; i++) { const m = mid(dp.vertices[i], dp.vertices[(i + 1) % dp.vertices.length]); diamond(m.x, m.y); }
+      for (let i = 0; i < dp.vertices.length; i++) { const m = mid(dp.vertices[i], dp.vertices[(i + 1) % dp.vertices.length]); diamonds.push({ x: m.x, y: m.y }); }
+    }
+
+    _cachedDots = dots;
+    _cachedDiamonds = diamonds;
+  }
+
+  function drawJointCache(ctx2: CanvasRenderingContext2D): void {
+    const isLight = uiState.theme === 'light';
+    const dotColor = isLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.6)';
+    const jointRadius = 0.06;
+    const midRadius = 0.04;
+
+    ctx2.fillStyle = dotColor;
+    for (const d of _cachedDots) { ctx2.beginPath(); ctx2.arc(d.x, d.y, jointRadius, 0, Math.PI * 2); ctx2.fill(); }
+    for (const d of _cachedDiamonds) {
+      ctx2.save(); ctx2.translate(d.x, d.y); ctx2.rotate(Math.PI / 4);
+      ctx2.fillRect(-midRadius, -midRadius, midRadius * 2, midRadius * 2);
+      ctx2.restore();
     }
   }
 
@@ -784,14 +794,9 @@
       drawElementLabels(ctx, model.columns, model.walls, model.polylineWalls, model.beams, model.slabs, model.dropPanels, model.nonStructuralWalls, model.polylineNonStructuralWalls, model.hiddenElementIds);
     }
 
-    // Permanent joint dots for snapping visibility — blitted from offscreen cache (P1)
-    buildJointCache(W, H, ppm, z, ox, oy);
-    if (_jointCanvas) {
-      ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(_jointCanvas, 0, 0);
-      ctx.restore();
-    }
+    // Permanent joint dots for snapping visibility — cached positions, drawn with theme color (P1)
+    buildJointData();
+    drawJointCache(ctx);
 
     // Draw unconnected joints warnings (cached — only recomputed when model changes)
     const unconnectedJoints = getCachedUnconnectedJoints();

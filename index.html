@@ -6,6 +6,7 @@
       if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
         window.location.replace(window.location.href.replace('http:', 'https:'));
       }
+      try { if (localStorage.getItem('reslo_theme') === 'light') document.documentElement.classList.add('light-theme'); } catch(e) {}
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RESLO — Real-Time Structural Layout Optimizer</title>

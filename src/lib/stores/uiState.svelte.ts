@@ -58,7 +58,9 @@ class UIState {
   snappedPoint = $state<{ x: number; y: number; active: boolean }>({ x: 0, y: 0, active: false });
   cancelDrawing: (() => void) | null = null;
   vertexEditTarget = $state<{ elementId: string; vertexIndex: number } | null>(null);
-  theme = $state<'dark' | 'light'>('dark');
+  theme = $state<'dark' | 'light'>(
+    (typeof window !== 'undefined' && (localStorage.getItem('reslo_theme') as 'dark' | 'light')) || 'dark'
+  );
   show3DPlanOverlay = $state(false);
 
   // Backend API URL (persisted in localStorage)
@@ -215,6 +217,12 @@ class UIState {
       this.propertiesPanel.initialized = true;
     }
   }
+}
+
+// Apply saved theme immediately to avoid flash-of-wrong-theme
+if (typeof document !== 'undefined') {
+  const saved = localStorage.getItem('reslo_theme');
+  document.documentElement.classList.toggle('light-theme', saved === 'light');
 }
 
 export const uiState = new UIState();

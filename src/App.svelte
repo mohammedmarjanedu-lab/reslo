@@ -401,6 +401,15 @@
     }
   });
 
+  // Apply theme class via direct DOM manipulation — avoids Svelte reactivity cascade
+  $effect(() => {
+    const t = uiState.theme;
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.toggle('light-theme', t === 'light');
+      try { localStorage.setItem('reslo_theme', t); } catch {}
+    }
+  });
+
   // AI Loop Engine + Perf Probe
   $effect(() => {
     startPerfProbe((fps, frameTime) => {
@@ -435,7 +444,7 @@
   }
 </script>
 
-<div class="flex h-screen w-screen overflow-hidden bg-[#000000] {uiState.theme === 'light' ? 'light-theme' : ''}">
+<div class="flex h-screen w-screen overflow-hidden bg-[#000000]">
   <div class="sidebar flex flex-col w-[220px] shrink-0 border-r border-[#222222] bg-[#000000]">
     <!-- Scrollable top section -->
     <div class="flex-1 flex flex-col gap-1.5 p-2 overflow-y-auto">

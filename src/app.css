@@ -34,6 +34,10 @@ select:hover, input:hover, select:focus, input:focus {
   background-color: var(--theme-bg-main) !important;
   color: var(--theme-text-primary) !important;
 }
+.light-theme body {
+  background-color: var(--theme-bg-main) !important;
+  color: var(--theme-text-primary) !important;
+}
 
 .light-theme .bg-slate-900,
 .light-theme .bg-slate-950,
