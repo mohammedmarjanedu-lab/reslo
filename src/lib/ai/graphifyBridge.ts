@@ -1,4 +1,5 @@
 import type { StructuralGraph, GraphNode, GraphEdge } from '../engine/graphModel';
+import graphJsonUrl from '../../../graphify-out/graph.json?url';
 
 interface GraphifyNode {
   id: string;
@@ -45,7 +46,7 @@ async function loadGraph(): Promise<GraphifyGraph> {
 
   _loadPromise = (async () => {
     try {
-      const res = await fetch('/graphify-out/graph.json');
+      const res = await fetch(graphJsonUrl);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       _cachedGraph = data as GraphifyGraph;
