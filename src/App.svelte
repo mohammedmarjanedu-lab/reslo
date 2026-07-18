@@ -14,7 +14,7 @@
   import FEMControlPanel from './lib/components/FEMControlPanel.svelte';
   import ThreeViewport from './lib/components/ThreeViewport.svelte';
   import InsightPanel from './lib/ai/insightPanel.svelte';
-  import { loopEngine } from './lib/ai/loopEngine';
+  import { loopEngine } from './lib/ai/loopEngine.svelte';
   import { memoryStore } from './lib/ai/memoryStore.svelte';
   import { startPerfProbe, perfProbeStop } from './lib/ai/perfProbe';
   import { uiState } from './lib/stores/uiState.svelte';

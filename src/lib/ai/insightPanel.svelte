@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { loopEngine } from './loopEngine';
+  import { loopEngine } from './loopEngine.svelte';
   import { memoryStore } from './memoryStore.svelte';
   import { onMount, onDestroy } from 'svelte';
 
