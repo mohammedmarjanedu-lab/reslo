@@ -103,15 +103,21 @@ export async function meshAndAnalyze(
   const mesh: PyMesh = meshData.mesh;
   const tol = 0.05;
   const wallNodeIds: number[] = [];
+  const wallNodesCount = new Array(walls.length).fill(0);
   for (const n of mesh.nodes) {
-    for (const w of walls) {
+    for (let wi = 0; wi < walls.length; wi++) {
+      const w = walls[wi];
       const dx = w.endPoint.x - w.startPoint.x, dy = w.endPoint.y - w.startPoint.y;
       const len2 = dx * dx + dy * dy;
       if (len2 < 1e-12) continue;
       const t = ((n.x - w.startPoint.x) * dx + (n.y - w.startPoint.y) * dy) / len2;
-      if (t >= 0 && t <= 1) {
-        const px = w.startPoint.x + t * dx, py = w.startPoint.y + t * dy;
-        if (Math.hypot(n.x - px, n.y - py) < tol) { wallNodeIds.push(n.id); break; }
+      if (t >= -0.01 && t <= 1.01) {
+        const px = w.startPoint.x + Math.max(0, Math.min(1, t)) * dx;
+        const py = w.startPoint.y + Math.max(0, Math.min(1, t)) * dy;
+        if (Math.hypot(n.x - px, n.y - py) < tol) {
+          wallNodeIds.push(n.id);
+          wallNodesCount[wi]++;
+        }
       }
     }
   }
@@ -152,9 +158,6 @@ export async function meshAndAnalyze(
     colStiffnesses.push(4 * E_col * I / H);
     colShapes.push(c.shape || 'rectangular');
     colDiameters.push((c.diameter || 500) / 1000);
-  }
-  if (skippedColumns.length > 0) {
-    console.warn(`Columns ${skippedColumns.join(', ')} are outside the slab mesh (> ${COL_SNAP_TOL}m) and were skipped.`);
   }
 
   const concreteDensity = 25; // kN/m³
@@ -220,34 +223,16 @@ export async function meshAndAnalyze(
     warnings.push(`Column${skippedColumns.length > 1 ? 's' : ''} ${skippedColumns.join(', ')} ${skippedColumns.length > 1 ? 'are' : 'is'} outside the slab mesh (>${COL_SNAP_TOL}m away) and ${skippedColumns.length > 1 ? 'were' : 'was'} skipped.`);
   }
 
-  // Check wall connectivity: how many mesh nodes each wall segment found
-  const wallConnectResults: { idx: number; nodesFound: number }[] = [];
-  for (let wi = 0; wi < walls.length; wi++) {
-    const w = walls[wi];
-    const dx = w.endPoint.x - w.startPoint.x, dy = w.endPoint.y - w.startPoint.y;
-    const len2 = dx * dx + dy * dy;
-    if (len2 < 1e-12) { wallConnectResults.push({ idx: wi, nodesFound: 0 }); continue; }
-    let count = 0;
-    for (const n of mesh.nodes) {
-      const t = ((n.x - w.startPoint.x) * dx + (n.y - w.startPoint.y) * dy) / len2;
-      if (t >= -0.01 && t <= 1.01) {
-        const px = w.startPoint.x + Math.max(0, Math.min(1, t)) * dx;
-        const py = w.startPoint.y + Math.max(0, Math.min(1, t)) * dy;
-        if (Math.hypot(n.x - px, n.y - py) < tol) { count++; }
-      }
-    }
-    wallConnectResults.push({ idx: wi, nodesFound: count });
-  }
-  const disconnectedWalls = wallConnectResults.filter(w => w.nodesFound === 0);
   const disconnectedWallIds: string[] = [];
-  if (disconnectedWalls.length > 0) {
-    const wallLabels = disconnectedWalls.map(w => {
-      const wall = walls[w.idx] as any;
-      const lbl = wall.label || `Wall ${w.idx + 1}`;
+  for (let wi = 0; wi < walls.length; wi++) {
+    if (wallNodesCount[wi] === 0) {
+      const wall = walls[wi] as any;
+      const lbl = wall.label || `Wall ${wi + 1}`;
       disconnectedWallIds.push(wall.id || lbl);
-      return lbl;
-    });
-    warnings.push(`Wall${disconnectedWalls.length > 1 ? 's' : ''} ${wallLabels.join(', ')} ${disconnectedWalls.length > 1 ? 'have' : 'has'} no mesh nodes along its length — it may be outside the slab.`);
+    }
+  }
+  if (disconnectedWallIds.length > 0) {
+    warnings.push(`Wall${disconnectedWallIds.length > 1 ? 's' : ''} ${disconnectedWallIds.join(', ')} ${disconnectedWallIds.length > 1 ? 'have' : 'has'} no mesh nodes along its length — it may be outside the slab.`);
   }
 
   if (mesh.unconnectedNodeIds && mesh.unconnectedNodeIds.length > 0) {

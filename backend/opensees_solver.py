@@ -111,10 +111,10 @@ def _build_model(request: AnalysisRequest, nodes_xy, nn, elem_nodes, col_node_in
 
         if not lateral_cr_mode:
             if master_id not in slave_nodes:
-                # Restrain vertical deflection at column top (gravity mode support)
                 if master_id not in node_fixities:
                     node_fixities[master_id] = [0, 0, 0, 0, 0, 0]
-                node_fixities[master_id][2] = 1
+                # Note: The base node (base_node_id) is fully fixed [1,1,1,1,1,1].
+                # The elasticBeamColumn provides the vertical and bending stiffness to the slab.
 
     # Column footprint rigid links (with duplicate prevention)
     already_linked = set()
@@ -683,10 +683,10 @@ def _calculate_cr_opensees(request: AnalysisRequest, h: float, E: float, nu: flo
         ops.constraints('Transformation')
         ops.numberer('RCM')
         try:
-            ops.system('UMFPACK')
-        except Exception:
             ops.system('SparseGeneral')
-        ops.algorithm('Newton')
+        except Exception:
+            ops.system('BandGeneral')
+        ops.algorithm('Linear')
         ops.integrator('LoadControl', 1.0)
         ops.analysis('Static')
         
@@ -961,14 +961,14 @@ def analyze_slab_opensees(request: AnalysisRequest) -> AnalysisResponse:
         # Load is vertical, pointing downwards (global -Z direction)
         ops.load(nid, 0.0, 0.0, -fz, 0.0, 0.0, 0.0)
 
-    # 7. Run Analysis using OpenSees defaults (with Transformation constraints)
-    ops.constraints('Penalty', 1.0e13, 1.0e13)
+    # 7. Run Analysis using fast 1-step Linear solver (with Transformation MPC constraints)
+    ops.constraints('Transformation')
     ops.numberer('RCM')
     try:
-        ops.system('UMFPACK')
-    except Exception:
         ops.system('SparseGeneral')
-    ops.algorithm('Newton')
+    except Exception:
+        ops.system('BandGeneral')
+    ops.algorithm('Linear')
     ops.integrator('LoadControl', 1.0)
     ops.analysis('Static')
     
@@ -1021,20 +1021,31 @@ def analyze_slab_opensees(request: AnalysisRequest) -> AnalysisResponse:
     max_nx = max_ny = max_nxy = float('-inf')
 
     for elem_idx, elem in enumerate(mesh.elements):
-        # Query stresses at the 4 integration points
-        stresses = ops.eleResponse(elem.id + 1, 'stresses')
+        elem_tag = elem_idx + 1
+        forces = ops.eleResponse(elem_tag, 'forces')
+        stresses = ops.eleResponse(elem_tag, 'stresses')
         
         # Determine effective thickness of this specific element (accounting for drop panels)
         h_elem = elem_thicknesses.get(elem_idx, h)
         
-        if stresses is None or len(stresses) < 32:
-            nx = ny = nxy = mx = my = mxy = vx = vy = 0.0
-        else:
+        if stresses and len(stresses) >= 32 and any(abs(s) > 1e-12 for s in stresses[:32]):
             arr = np.array(stresses[:32]).reshape(4, 8)
             nx, ny, nxy, mx, my, mxy, vx, vy = arr.mean(axis=0)
             mx = -mx
             my = -my
             mxy = -mxy
+        elif forces and len(forces) >= 18:
+            # ShellDKGT 18-element nodal force vector [Nx, Ny, Fz, Mx, My, Mz] per node
+            nx = (forces[0] + forces[6] + forces[12]) / 3.0
+            ny = (forces[1] + forces[7] + forces[13]) / 3.0
+            nxy = 0.0
+            mx = -(forces[3] + forces[9] + forces[15]) / 3.0
+            my = -(forces[4] + forces[10] + forces[16]) / 3.0
+            mxy = -(forces[5] + forces[11] + forces[17]) / 3.0
+            vx = (forces[2] + forces[8] + forces[14]) / 3.0
+            vy = 0.0
+        else:
+            nx = ny = nxy = mx = my = mxy = vx = vy = 0.0
 
         # Membrane calculations
         n1 = (nx + ny) / 2 + np.sqrt(((nx - ny) / 2)**2 + nxy**2)
