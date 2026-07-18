@@ -30,6 +30,43 @@
   let apiAvailable = false;
   let healthInterval: ReturnType<typeof setInterval> | null = null;
 
+  // Draggable Results Toolbar State
+  let displayPosX = $state<number | null>(null);
+  let displayPosY = $state<number | null>(null);
+  let isDraggingDisplay = false;
+  let dragOffset = { x: 0, y: 0 };
+
+  function handleDisplayDragStart(e: MouseEvent) {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'BUTTON' || target.closest('button')) return;
+    
+    e.preventDefault();
+    const toolbar = target.closest('.display-toolbar') as HTMLElement;
+    if (!toolbar) return;
+    
+    const rect = toolbar.getBoundingClientRect();
+    dragOffset = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+    
+    isDraggingDisplay = true;
+    window.addEventListener('mousemove', handleDisplayMouseMove);
+    window.addEventListener('mouseup', handleDisplayMouseUp);
+  }
+
+  function handleDisplayMouseMove(e: MouseEvent) {
+    if (!isDraggingDisplay) return;
+    displayPosX = e.clientX - dragOffset.x;
+    displayPosY = e.clientY - dragOffset.y;
+  }
+
+  function handleDisplayMouseUp() {
+    isDraggingDisplay = false;
+    window.removeEventListener('mousemove', handleDisplayMouseMove);
+    window.removeEventListener('mouseup', handleDisplayMouseUp);
+  }
+
 // Phase 3g: Wire OBSERVE - start perf probe; the AI loop starts from its own UI
   $effect(() => {
     startPerfProbe((fps, frameTime) => {
@@ -525,7 +562,12 @@
       <WorkspaceCanvas />
 
       {#if femState.hasResults}
-        <div class="absolute bottom-[80px] left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex items-center gap-1.5 p-1 rounded-lg border border-[#2b2b2b] bg-[#141414]/90 backdrop-blur-md shadow-2xl">
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+          class="display-toolbar absolute bottom-[80px] left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex items-center gap-1.5 p-1.5 rounded-lg border border-[#2b2b2b] bg-[#141414]/90 backdrop-blur-md shadow-2xl cursor-move select-none"
+          style={displayPosX !== null && displayPosY !== null ? `left: ${displayPosX}px; top: ${displayPosY}px; bottom: auto; transform: none; position: fixed;` : ''}
+          onmousedown={handleDisplayDragStart}
+        >
           {#each ['deflection', 'mx', 'my', 'mxy', 'punching'] as type}
             {#if type !== 'punching' || (femState.activeResult?.columnPunching?.length ?? 0) > 0}
               <button
