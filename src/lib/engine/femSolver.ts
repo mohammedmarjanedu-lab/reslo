@@ -665,31 +665,50 @@ export function analyzeAllSlabs(
   onProgress?.(0.10);
 
   // 2. Build global nodes and merge coincident nodes (within tolerance)
-  const globalNodes: FEMNode[] = [];
-  const nodeMap = new Map<string, Map<number, number>>(); // slabId -> localNodeId -> globalNodeIdx
+  const tempNodes: { x: number; y: number }[] = [];
   const mergeTol = meshSize * 0.1;
 
   for (const { slab, mesh } of slabMeshes) {
-    const localMap = new Map<number, number>();
-    nodeMap.set(slab.id, localMap);
-    
     for (const node of mesh.nodes) {
-      let found = -1;
-      for (let g = 0; g < globalNodes.length; g++) {
-        const gn = globalNodes[g];
-        if (Math.abs(node.x - gn.x) < mergeTol && Math.abs(node.y - gn.y) < mergeTol) {
-          found = g;
+      let found = false;
+      for (const tn of tempNodes) {
+        if (Math.abs(node.x - tn.x) < mergeTol && Math.abs(node.y - tn.y) < mergeTol) {
+          found = true;
           break;
         }
       }
-      
-      if (found >= 0) {
-        localMap.set(node.id, found);
-      } else {
-        const newIdx = globalNodes.length;
-        globalNodes.push({ id: newIdx, x: node.x, y: node.y });
-        localMap.set(node.id, newIdx);
+      if (!found) {
+        tempNodes.push({ x: node.x, y: node.y });
       }
+    }
+  }
+
+  // Bandwidth optimization: sort merged nodes by X coordinate (and Y tie-breaker)
+  // to group spatially adjacent nodes with close indices.
+  tempNodes.sort((a, b) => {
+    if (Math.abs(a.x - b.x) > 1e-5) return a.x - b.x;
+    return a.y - b.y;
+  });
+
+  const globalNodes: FEMNode[] = tempNodes.map((n, idx) => ({ id: idx, x: n.x, y: n.y }));
+
+  // Re-map each slab's local node IDs to the sorted global node indices
+  const nodeMap = new Map<string, Map<number, number>>();
+  for (const { slab, mesh } of slabMeshes) {
+    const localMap = new Map<number, number>();
+    nodeMap.set(slab.id, localMap);
+    for (const node of mesh.nodes) {
+      let bestIdx = -1;
+      let minD = Infinity;
+      for (let g = 0; g < globalNodes.length; g++) {
+        const gn = globalNodes[g];
+        const d = Math.hypot(node.x - gn.x, node.y - gn.y);
+        if (d < minD) {
+          minD = d;
+          bestIdx = g;
+        }
+      }
+      localMap.set(node.id, bestIdx);
     }
   }
 

@@ -654,24 +654,23 @@
 {/if}
 
 {#if femState.isComputing}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-    <div class="w-80 rounded-xl border border-[#333333] bg-[#141414] p-6 shadow-2xl flex flex-col items-center gap-4 text-center">
-      <!-- Premium Spinner -->
-      <div class="relative w-12 h-12">
-        <div class="absolute inset-0 rounded-full border-4 border-[#222222]"></div>
-        <div class="absolute inset-0 rounded-full border-4 border-t-[#D62430] animate-spin"></div>
-      </div>
-      <div class="flex flex-col gap-1">
-        <div class="text-xs font-bold text-white uppercase tracking-wider">Solving FEM Model</div>
-        <div class="text-[10px] text-slate-400">Running Finite Element analysis equations...</div>
-      </div>
+  <div class="fixed bottom-4 right-4 z-50 w-72 rounded-xl border border-[#333333] bg-[#141414] p-4 shadow-2xl flex items-center gap-3 text-left pointer-events-auto">
+    <!-- Premium Spinner -->
+    <div class="relative w-8 h-8 shrink-0">
+      <div class="absolute inset-0 rounded-full border-3 border-[#222222]"></div>
+      <div class="absolute inset-0 rounded-full border-3 border-t-[#D62430] animate-spin"></div>
+    </div>
+    <div class="flex-1 flex flex-col gap-0.5 overflow-hidden">
+      <div class="text-[10px] font-bold text-white uppercase tracking-wider">Solving FEM Model</div>
       {#if femState.progress > 0}
-        <div class="w-full space-y-1 mt-1">
-          <div class="h-1.5 w-full rounded-full bg-[#222222] overflow-hidden">
+        <div class="w-full flex items-center gap-1.5 mt-0.5">
+          <div class="flex-1 h-1 rounded-full bg-[#222222] overflow-hidden">
             <div class="h-full bg-[#D62430] transition-all duration-300" style="width: {femState.progress * 100}%"></div>
           </div>
-          <div class="text-[9px] font-mono text-slate-500">{(femState.progress * 100).toFixed(0)}% Complete</div>
+          <span class="text-[8px] font-mono text-slate-500 shrink-0">{(femState.progress * 100).toFixed(0)}%</span>
         </div>
+      {:else}
+        <div class="text-[9px] text-slate-400 truncate">Running analysis equations...</div>
       {/if}
     </div>
   </div>
