@@ -93,10 +93,31 @@
     for (const r of femState.slabResults.values()) total += r.mesh.nodes.length * 3;
     return total;
   });
+  function copyShareLink() {
+    const currentUrl = uiState.apiUrl;
+    let shareUrl = 'https://reslo-eosin.vercel.app/';
+    if (currentUrl && currentUrl.startsWith('https://')) {
+      shareUrl += `?api=${encodeURIComponent(currentUrl)}`;
+    }
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      uiState.setStatusMessage(`Share link copied to clipboard! 🔗`);
+    }).catch(() => {
+      uiState.setStatusMessage(`Share URL: ${shareUrl}`);
+    });
+  }
 </script>
 
 <div class="rounded-lg bg-slate-800 border border-slate-700 p-3 shadow-lg w-[220px]">
-  <div class="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2">FEM Contour</div>
+  <div class="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+    <span>FEM Contour</span>
+    <button
+      onclick={copyShareLink}
+      class="text-[9px] px-1.5 py-0.5 bg-indigo-600/80 hover:bg-indigo-500 text-white rounded font-medium transition-colors flex items-center gap-1"
+      title="Copy shareable link for anyone"
+    >
+      🔗 Share Link
+    </button>
+  </div>
 
   {#if femState.isComputing}
     <div class="mb-2">
@@ -121,13 +142,22 @@
         <label class="block text-[10px] text-slate-500">API Endpoint URL</label>
         <span class="w-1.5 h-1.5 rounded-full {uiState.backendConnected ? 'bg-green-500 shadow-[0_0_6px_#10b981]' : 'bg-red-500 shadow-[0_0_6px_#ef4444]'}"></span>
       </div>
-      <input
-        type="text"
-        value={uiState.apiUrl}
-        onchange={(e) => uiState.setApiUrl((e.target as HTMLInputElement).value)}
-        placeholder="http://localhost:8000"
-        class="w-full rounded bg-slate-900 border border-slate-700 px-1.5 py-0.5 text-white font-mono text-[9px] focus:outline-none focus:border-indigo-500"
-      />
+      <div class="flex gap-1">
+        <input
+          type="text"
+          value={uiState.apiUrl}
+          onchange={(e) => uiState.setApiUrl((e.target as HTMLInputElement).value)}
+          placeholder="http://localhost:8000"
+          class="flex-1 rounded bg-slate-900 border border-slate-700 px-1.5 py-0.5 text-white font-mono text-[9px] focus:outline-none focus:border-indigo-500"
+        />
+        <button
+          onclick={copyShareLink}
+          class="px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-[9px] transition-colors shrink-0"
+          title="Copy share link"
+        >
+          🔗
+        </button>
+      </div>
     </div>
 
     <!-- Result Type -->

@@ -414,6 +414,23 @@
       uiState.initPanels(window.innerWidth, window.innerHeight);
     }
   }
+
+  function copyShareLink(): void {
+    const currentUrl = uiState.apiUrl;
+    let shareUrl = 'https://reslo-eosin.vercel.app/';
+    if (currentUrl && currentUrl.startsWith('https://')) {
+      shareUrl += `?api=${encodeURIComponent(currentUrl)}`;
+    }
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        uiState.setStatusMessage(`Share link copied to clipboard! 🔗`);
+      }).catch(() => {
+        uiState.setStatusMessage(`Share URL: ${shareUrl}`);
+      });
+    } else {
+      uiState.setStatusMessage(`Share URL: ${shareUrl}`);
+    }
+  }
 </script>
 
 <div class="flex h-screen w-screen overflow-hidden bg-[#000000] {uiState.theme === 'light' ? 'light-theme' : ''}">
@@ -421,8 +438,15 @@
     <!-- Scrollable top section -->
     <div class="flex-1 flex flex-col gap-1.5 p-2 overflow-y-auto">
       <div class="text-sm font-bold text-[#D62430] tracking-tight mb-1 flex items-center justify-between">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1.5">
           <img src="/reslo-logo.png" alt="Reslo" class="h-6" />
+          <button
+            onclick={copyShareLink}
+            class="text-slate-400 hover:text-white transition-colors p-0.5 rounded cursor-pointer text-[10px]"
+            title="Copy Shareable Link"
+          >
+            🔗
+          </button>
           <button
             onclick={() => { uiState.theme = uiState.theme === 'dark' ? 'light' : 'dark'; }}
             class="theme-toggle text-slate-400 hover:text-slate-200 transition-colors p-0.5 rounded cursor-pointer"
