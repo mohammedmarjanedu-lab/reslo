@@ -665,51 +665,59 @@ export function analyzeAllSlabs(
   onProgress?.(0.10);
 
   // 2. Build global nodes and merge coincident nodes (within tolerance)
-  const tempNodes: { x: number; y: number }[] = [];
-  const mergeTol = meshSize * 0.1;
-
+  interface NodeRef {
+    slabId: string;
+    localId: number;
+    x: number;
+    y: number;
+    globalIdx?: number;
+  }
+  const allNodes: NodeRef[] = [];
   for (const { slab, mesh } of slabMeshes) {
     for (const node of mesh.nodes) {
-      let found = false;
-      for (const tn of tempNodes) {
-        if (Math.abs(node.x - tn.x) < mergeTol && Math.abs(node.y - tn.y) < mergeTol) {
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        tempNodes.push({ x: node.x, y: node.y });
-      }
+      allNodes.push({ slabId: slab.id, localId: node.id, x: node.x, y: node.y });
     }
   }
 
-  // Bandwidth optimization: sort merged nodes by X coordinate (and Y tie-breaker)
-  // to group spatially adjacent nodes with close indices.
-  tempNodes.sort((a, b) => {
-    if (Math.abs(a.x - b.x) > 1e-5) return a.x - b.x;
-    return a.y - b.y;
-  });
+  // Sort nodes along the X-axis to group coincident nodes together
+  allNodes.sort((a, b) => a.x - b.x);
 
-  const globalNodes: FEMNode[] = tempNodes.map((n, idx) => ({ id: idx, x: n.x, y: n.y }));
+  const mergeTol = meshSize * 0.1;
+  const uniqueNodes: FEMNode[] = [];
+
+  for (const node of allNodes) {
+    let foundIdx = -1;
+    // Since uniqueNodes is naturally sorted by X coordinate, we only need to scan back
+    // a very small distance until the difference in X exceeds the merge tolerance.
+    for (let u = uniqueNodes.length - 1; u >= 0; u--) {
+      const un = uniqueNodes[u];
+      if (node.x - un.x > mergeTol) {
+        break; // Coincident nodes cannot be further back
+      }
+      if (Math.abs(node.y - un.y) < mergeTol) {
+        foundIdx = u;
+        break;
+      }
+    }
+
+    if (foundIdx >= 0) {
+      node.globalIdx = foundIdx;
+    } else {
+      const newIdx = uniqueNodes.length;
+      uniqueNodes.push({ id: newIdx, x: node.x, y: node.y });
+      node.globalIdx = newIdx;
+    }
+  }
+
+  const globalNodes: FEMNode[] = uniqueNodes;
 
   // Re-map each slab's local node IDs to the sorted global node indices
   const nodeMap = new Map<string, Map<number, number>>();
-  for (const { slab, mesh } of slabMeshes) {
-    const localMap = new Map<number, number>();
-    nodeMap.set(slab.id, localMap);
-    for (const node of mesh.nodes) {
-      let bestIdx = -1;
-      let minD = Infinity;
-      for (let g = 0; g < globalNodes.length; g++) {
-        const gn = globalNodes[g];
-        const d = Math.hypot(node.x - gn.x, node.y - gn.y);
-        if (d < minD) {
-          minD = d;
-          bestIdx = g;
-        }
-      }
-      localMap.set(node.id, bestIdx);
-    }
+  for (const { slab } of slabMeshes) {
+    nodeMap.set(slab.id, new Map<number, number>());
+  }
+  for (const node of allNodes) {
+    nodeMap.get(node.slabId)!.set(node.localId, node.globalIdx!);
   }
 
   const ndof = globalNodes.length * 3;
