@@ -373,13 +373,12 @@ export async function meshAndAnalyzeAllSlabs(
 ): Promise<{ results: any[]; warnings: string[]; disconnectedIds: string[] }> {
   if (slabs.length === 0) return { results: [], warnings: [], disconnectedIds: [] };
 
-  // 1. Mesh all slabs individually via the backend mesh API
+  // 1. Mesh all slabs in parallel via the backend mesh API (prevents network blocking lag)
   interface SlabMeshData {
     slab: any;
     mesh: PyMesh;
   }
-  const slabMeshes: SlabMeshData[] = [];
-  for (const slab of slabs) {
+  const meshPromises = slabs.map(async (slab) => {
     const geometry = {
       vertices: slab.vertices,
       walls: walls.map(w => ({ startPoint: w.startPoint, endPoint: w.endPoint })),
@@ -394,9 +393,12 @@ export async function meshAndAnalyzeAllSlabs(
     if (!mr.ok) throw new PyApiError(`Mesh API failed for slab ${slab.label || slab.id}: ${mr.status}`);
     const meshData = await mr.json();
     if (meshData.success && meshData.mesh) {
-      slabMeshes.push({ slab, mesh: meshData.mesh });
+      return { slab, mesh: meshData.mesh };
     }
-  }
+    throw new PyApiError(`Mesh failed for slab ${slab.label || slab.id}: ${meshData.error}`);
+  });
+
+  const slabMeshes: SlabMeshData[] = await Promise.all(meshPromises);
 
   if (slabMeshes.length === 0) {
     return { results: [], warnings: ['No slabs could be meshed.'], disconnectedIds: [] };

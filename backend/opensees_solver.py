@@ -982,13 +982,16 @@ def analyze_slab_opensees(request: AnalysisRequest) -> AnalysisResponse:
         # Load is vertical, pointing downwards (global -Z direction)
         ops.load(nid, 0.0, 0.0, -fz, 0.0, 0.0, 0.0)
 
-    # 7. Run Analysis using fast 1-step Linear solver (with Transformation MPC constraints)
+    # 7. Run Analysis using high-performance sparse linear solver (UmfPack/SparseGeneral)
     ops.constraints('Transformation')
     ops.numberer('RCM')
     try:
-        ops.system('SparseGeneral')
+        ops.system('UMFPack')
     except Exception:
-        ops.system('BandGeneral')
+        try:
+            ops.system('SparseGeneral')
+        except Exception:
+            ops.system('BandGeneral')
     ops.algorithm('Linear')
     ops.integrator('LoadControl', 1.0)
     ops.analysis('Static')
