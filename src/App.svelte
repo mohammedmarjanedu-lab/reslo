@@ -494,40 +494,15 @@
     </div>
 
     <!-- Fixed bottom section -->
-    {#if uiState.viewMode === '2d'}
-      {#if femState.hasResults}
-        <div class="p-2 border-t border-[#222222] bg-[#0c0c0c] flex flex-col gap-1.5 shrink-0">
-          <div class="text-[10px] font-bold text-[#ffffff] uppercase tracking-wider px-1">Display</div>
-          <div class="grid grid-cols-3 gap-1">
-            {#each ['deflection', 'mx', 'my', 'mxy', 'punching'] as type}
-              {#if type !== 'punching' || (femState.activeResult?.columnPunching?.length ?? 0) > 0}
-                <button
-                  class="rounded py-1 text-[10px] transition-colors cursor-pointer text-center
-                    {femState.showFEMContour && femState.resultType === type
-                      ? 'bg-[#D62430] text-white font-bold'
-                      : 'bg-[#222222] text-[#ffffff] hover:bg-[#D62430] hover:text-white'}"
-                  onclick={() => {
-                    if (femState.showFEMContour && femState.resultType === type) {
-                      femState.showFEMContour = false;
-                    } else {
-                      femState.resultType = type as any;
-                      femState.showFEMContour = true;
-                    }
-                  }}
-                >
-                  {type === 'deflection' ? 'Defl' : type === 'mx' ? 'Mx' : type === 'my' ? 'My' : type === 'mxy' ? 'Mxy' : 'Punch'}
-                </button>
-              {/if}
-            {/each}
-          </div>
-        </div>
-      {/if}
-    {:else}
-      <div class="p-2 border-t border-[#222222] bg-[#0c0c0c] flex flex-col gap-1 shrink-0">
-        <div class="text-[10px] font-bold text-[#ffffff] uppercase tracking-wider px-1">3D View</div>
-        <p class="text-[9px] text-slate-400 px-1">Viewing deformed shape</p>
+    <div class="p-2.5 border-t border-[#222222] bg-[#0c0c0c] flex flex-col gap-1 shrink-0">
+      <div class="text-[10px] font-bold text-[#888888] uppercase tracking-wider px-1">Calculation Engine</div>
+      <div class="flex items-center gap-1.5 px-1 py-0.5">
+        <span class="w-1.5 h-1.5 rounded-full {uiState.backendConnected ? 'bg-green-500 shadow-[0_0_6px_#10b981]' : 'bg-yellow-500 shadow-[0_0_6px_#f59e0b]'}"></span>
+        <span class="text-[9px] text-slate-300 font-medium">
+          {uiState.backendConnected ? 'OpenSeesPy Connected' : 'Local Solver Fallback'}
+        </span>
       </div>
-    {/if}
+    </div>
   </div>
 
   {#if uiState.viewMode === '3d'}
@@ -546,9 +521,35 @@
       </div>
     </div>
   {:else}
-    <div class="flex flex-1 flex-col">
+    <div class="flex flex-1 flex-col relative">
       <WorkspaceCanvas />
-      <div class="flex items-center justify-between px-4 py-1.5 bg-[#1a1a1a] border-t border-[#333333] text-[11px] text-[#ffffff]">
+
+      {#if femState.hasResults}
+        <div class="absolute bottom-[80px] left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex items-center gap-1.5 p-1 rounded-lg border border-[#2b2b2b] bg-[#141414]/90 backdrop-blur-md shadow-2xl">
+          {#each ['deflection', 'mx', 'my', 'mxy', 'punching'] as type}
+            {#if type !== 'punching' || (femState.activeResult?.columnPunching?.length ?? 0) > 0}
+              <button
+                class="px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-wider transition-all duration-200 cursor-pointer text-center border border-transparent
+                  {femState.showFEMContour && femState.resultType === type
+                    ? 'bg-[#D62430] text-white shadow-[0_0_8px_rgba(214,36,48,0.4)] border-[#D62430]'
+                    : 'bg-[#1e1e1e]/85 text-[#b3b3b3] border-[#2b2b2b] hover:bg-[#333333] hover:text-white'}"
+                onclick={() => {
+                  if (femState.showFEMContour && femState.resultType === type) {
+                    femState.showFEMContour = false;
+                  } else {
+                    femState.resultType = type as any;
+                    femState.showFEMContour = true;
+                  }
+                }}
+              >
+                {type === 'deflection' ? 'Deflection' : type === 'mx' ? 'Moment Mx' : type === 'my' ? 'Moment My' : type === 'mxy' ? 'Moment Mxy' : 'Punching'}
+              </button>
+            {/if}
+          {/each}
+        </div>
+      {/if}
+
+      <div class="flex items-center justify-between px-4 py-1.5 bg-[#1a1a1a] border-t border-[#333333] text-[11px] text-[#ffffff] z-10">
         <span>{uiState.statusMessage}</span>
         <span class="flex items-center gap-3 font-mono">
           <button
