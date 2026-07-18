@@ -189,7 +189,7 @@ export async function meshAndAnalyze(
 
   const arBody: any = {
     mesh, thickness: slabThickness,
-    elasticModulus: slabPolygon.elasticModulus ? slabPolygon.elasticModulus * 1000 : 25e9, poissonRatio,
+    elasticModulus: (slabPolygon.elasticModulus ? slabPolygon.elasticModulus * 1000 : 25e9) * (slabPolygon.crackingModifier ?? 0.25), poissonRatio,
     uniformLoad: (slabPolygon.uniformLoad || 5.0) + (slabPolygon.partitionLoad ?? 0), selfWeight,
     wallNodeIds: [...new Set(wallNodeIds)],
     wallStartPoints: walls.map(w => w.startPoint),

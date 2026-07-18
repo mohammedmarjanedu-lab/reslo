@@ -803,6 +803,19 @@
               <option value="M60">M60</option>
             </select>
           </div>
+          <div>
+            <label class="block text-slate-500 mb-0.5">Cracking Modifier</label>
+            <input
+              type="number"
+              step="0.05"
+              min="0.01"
+              max="1.0"
+              value={slab.crackingModifier ?? 0.25}
+              onfocus={beginEdit}
+              oninput={(e) => { const v = parseNum(e.currentTarget.value); if (v !== null && v > 0) model.updateSlab(slab.id, { crackingModifier: v }); }}
+              class="w-full rounded bg-slate-700 px-2 py-1 text-white border border-slate-600 focus:border-indigo-500 focus:outline-none"
+            />
+          </div>
         </div>
         <div>
           <label class="block text-slate-500 mb-0.5">Vertex Coordinates</label>

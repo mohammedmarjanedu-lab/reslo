@@ -723,7 +723,7 @@ export function analyzeAllSlabs(
 
   for (const { slab, mesh } of slabMeshes) {
     const localMap = nodeMap.get(slab.id)!;
-    const E = slab.elasticModulus;
+    const E = slab.elasticModulus * (slab.crackingModifier ?? 0.25);
     const ν = poissonRatio;
     const t = slab.thickness;
     const q = slab.uniformLoad + (slab.partitionLoad ?? 0) + slab.concreteDensity * t;
@@ -964,14 +964,14 @@ export function analyzeAllSlabs(
   for (let sIdx = 0; sIdx < slabMeshes.length; sIdx++) {
     const { slab, mesh } = slabMeshes[sIdx];
     const localMap = nodeMap.get(slab.id)!;
-    const E = slab.elasticModulus;
+    const E = slab.elasticModulus * (slab.crackingModifier ?? 0.25);
     const ν = poissonRatio;
     const t = slab.thickness;
     
     const nodeDeflections = mesh.nodes.map(n => {
       const gIdx = localMap.get(n.id)!;
       const wz = u_global[gIdx * 3];
-      return { nodeId: n.id, wz: isFinite(wz) ? wz : 0 };
+      return { nodeId: n.id, wz: isFinite(wz) ? -wz : 0 };
     });
 
     const momentMx: { elementId: number; value: number }[] = [];

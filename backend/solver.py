@@ -787,7 +787,7 @@ def analyze_slab(request: AnalysisRequest) -> AnalysisResponse:
             nodeId=n + 1,
             u=float(u[base + U]),
             v=float(u[base + V]),
-            wz=float(u[base + W]),
+            wz=-float(u[base + W]),
             rx=float(u[base + RX]),
             ry=float(u[base + RY]),
             rz=float(u[base + RZ])
@@ -880,8 +880,8 @@ def analyze_slab(request: AnalysisRequest) -> AnalysisResponse:
         max_nxy = max(max_nxy, nxy)
 
     all_wz = [d.wz for d in node_deflections]
-    min_wz = min(all_wz) if all_wz else 0
-    max_wz = max(all_wz) if all_wz else 0
+    min_wz = min(all_wz) if all_wz else 0.0
+    max_wz = max(abs(w) for w in all_wz) if all_wz else 0.0
 
     return AnalysisResponse(
         success=True,

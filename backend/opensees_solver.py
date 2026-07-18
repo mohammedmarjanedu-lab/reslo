@@ -1001,7 +1001,7 @@ def analyze_slab_opensees(request: AnalysisRequest) -> AnalysisResponse:
             nodeId=node.id,
             u=disp[0],
             v=disp[1],
-            wz=-disp[2],
+            wz=disp[2],
             rx=disp[3],
             ry=disp[4],
             rz=disp[5]
@@ -1032,6 +1032,9 @@ def analyze_slab_opensees(request: AnalysisRequest) -> AnalysisResponse:
         else:
             arr = np.array(stresses[:32]).reshape(4, 8)
             nx, ny, nxy, mx, my, mxy, vx, vy = arr.mean(axis=0)
+            mx = -mx
+            my = -my
+            mxy = -mxy
 
         # Membrane calculations
         n1 = (nx + ny) / 2 + np.sqrt(((nx - ny) / 2)**2 + nxy**2)
@@ -1108,7 +1111,7 @@ def analyze_slab_opensees(request: AnalysisRequest) -> AnalysisResponse:
             col_forces = ops.eleForce(col_ele_tag)
             # The column is vertical, so the vertical force is global Fz at node j (forces[8])
             # or global Fz at node i (forces[2])
-            V_col = abs(col_forces[8]) if len(col_forces) >= 12 else 0.0
+            V_col = abs(col_forces[6]) if len(col_forces) >= 12 else 0.0
         except Exception:
             V_col = 0.0
             
@@ -1136,8 +1139,8 @@ def analyze_slab_opensees(request: AnalysisRequest) -> AnalysisResponse:
         ))
 
     all_wz = [d.wz for d in node_deflections]
-    min_wz = min(all_wz) if all_wz else 0
-    max_wz = max(all_wz) if all_wz else 0
+    min_wz = min(all_wz) if all_wz else 0.0
+    max_wz = max(abs(w) for w in all_wz) if all_wz else 0.0
     logger.info(f"Analysis complete in {solver_time:.2f}s: deflection range [{min_wz*1000:.3f}, {max_wz*1000:.3f}] mm")
 
     # Calculate Center of Rigidity using fast analytical formula (matches ETABS)

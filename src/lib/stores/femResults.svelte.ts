@@ -84,8 +84,8 @@ class FEMResultState {
       switch (rt) {
         case 'deflection': {
           nodeValues = new Map<number, number>();
-          for (const d of r.nodeDeflections) nodeValues.set(d.nodeId, Math.abs(-d.wz * 1000));
-          for (const d of r.nodeDeflections) allVals.push(Math.abs(-d.wz * 1000));
+          for (const d of r.nodeDeflections) nodeValues.set(d.nodeId, d.wz * 1000);
+          for (const d of r.nodeDeflections) allVals.push(d.wz * 1000);
           break;
         }
         case 'mx': { nodeValues = elemToNodeValues(r, r.momentMx); for (const m of r.momentMx) allVals.push(m.value); break; }

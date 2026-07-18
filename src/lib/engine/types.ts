@@ -15,6 +15,7 @@ export interface SlabPolygon {
   elasticModulus: number;
   concreteGrade?: string;
   color?: string;
+  crackingModifier?: number;
 }
 
 export type BoundaryCondition = 'fixed-fixed' | 'fixed-free';

@@ -7,7 +7,6 @@
   import PropertiesPanel from './lib/components/PropertiesPanel.svelte';
   import ContextMenu from './lib/components/ContextMenu.svelte';
   import ImageUploader from './lib/components/ImageUploader.svelte';
-  import ResultsOverlay from './lib/components/ResultsOverlay.svelte';
   import GraphViewer from './lib/components/GraphViewer.svelte';
   import ColumnPlacementPanel from './lib/components/ColumnPlacementPanel.svelte';
   import ExportDialog from './lib/components/ExportDialog.svelte';
@@ -21,6 +20,7 @@
   import { model } from './lib/stores/structuralModel.svelte';
   import { femState } from './lib/stores/femResults.svelte';
   import { graphStore } from './lib/stores/graphStore.svelte';
+  import { floorLayers } from './lib/stores/floorLayers.svelte';
   import type { SlabFEMResult, SlabPolygon, ColumnElement, ShearWallElement, FEMWorkerInput, FEMWorkerOutput } from './lib/engine/types';
   import { meshAndAnalyze, healthCheck, setApiBase, PyApiError } from './lib/engine/pyApi';
   import { computeScaleLabel } from './lib/engine/scaleCalibrator';
@@ -207,6 +207,7 @@
     let meshSize = uiState.femMeshSize;
 
     // Adaptive Node/Mesh Guard: clamp mesh size based on slab area to prevent solver timeouts
+    const maxNodes = apiAvailable ? 5000 : 1000;
     for (const slab of validSlabs) {
       if (slab.vertices.length >= 3) {
         const xs = slab.vertices.map(v => v.x);
@@ -214,8 +215,8 @@
         const bboxWidth = Math.max(...xs) - Math.min(...xs);
         const bboxHeight = Math.max(...ys) - Math.min(...ys);
         const slabArea = bboxWidth * bboxHeight;
-        // Limit total estimated nodes = slabArea / (meshSize^2) to ~1000
-        const minSafeMeshSize = Math.max(0.15, Math.sqrt(slabArea / 1000));
+        // Limit total estimated nodes = slabArea / (meshSize^2) to maxNodes
+        const minSafeMeshSize = Math.max(0.15, Math.sqrt(slabArea / maxNodes));
         if (meshSize < minSafeMeshSize) {
           meshSize = minSafeMeshSize;
         }
@@ -378,104 +379,132 @@
 </script>
 
 <div class="flex h-screen w-screen overflow-hidden bg-[#000000] {uiState.theme === 'light' ? 'light-theme' : ''}">
-  <div class="sidebar flex flex-col gap-1.5 p-2 w-[220px] shrink-0 overflow-y-auto border-r border-[#222222] bg-[#000000]">
-    <div class="text-sm font-bold text-[#D62430] tracking-tight mb-1 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <img src="/reslo-logo.png" alt="Reslo" class="h-6" />
+  <div class="sidebar flex flex-col w-[220px] shrink-0 border-r border-[#222222] bg-[#000000]">
+    <!-- Scrollable top section -->
+    <div class="flex-1 flex flex-col gap-1.5 p-2 overflow-y-auto">
+      <div class="text-sm font-bold text-[#D62430] tracking-tight mb-1 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <img src="/reslo-logo.png" alt="Reslo" class="h-6" />
+          <button
+            onclick={() => { uiState.theme = uiState.theme === 'dark' ? 'light' : 'dark'; }}
+            class="theme-toggle text-slate-400 hover:text-slate-200 transition-colors p-0.5 rounded cursor-pointer"
+            title={uiState.theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+          >
+            {#if uiState.theme === 'dark'}
+              <svg class="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 2.293a1 1 0 011.414 0l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 010-1.414zm2.121 4.471a1 1 0 10-1.414 1.414l.707.707a1 1 0 001.414-1.414l-.707-.707zM10 14a4 4 0 100-8 4 4 0 000 8zm-7.071-7.07a1 1 0 011.414-1.414l.707.707A1 1 0 013.636 7.636l-.707-.707zM3 10a1 1 0 011-1h1a1 1 0 110 2H4a1 1 0 01-1-1zm2.293 4.293a1 1 0 010 1.414l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 0zM14 16.707a1 1 0 011.414-1.414l.707.707a1 1 0 01-1.414 1.414l-.707-.707zM8.94 13.06a1 1 0 011.414 0l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+            {:else}
+              <svg class="w-3.5 h-3.5 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+              </svg>
+            {/if}
+          </button>
+        </div>
         <button
-          onclick={() => { uiState.theme = uiState.theme === 'dark' ? 'light' : 'dark'; }}
-          class="theme-toggle text-slate-400 hover:text-slate-200 transition-colors p-0.5 rounded cursor-pointer"
-          title={uiState.theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+          class="rounded px-2 py-0.5 text-[9px] font-bold uppercase transition-colors cursor-pointer border
+            {uiState.femAutoCompute 
+              ? 'bg-[#D62430] border-[#D62430] text-white hover:bg-[#B01E28]' 
+              : 'bg-[#1a1a1a] border-[#333333] text-[#ffffff] hover:bg-[#D62430]'}"
+          class:active={uiState.femAutoCompute}
+          onclick={() => { 
+            uiState.femAutoCompute = !uiState.femAutoCompute;
+            if (uiState.femAutoCompute) {
+              triggerFEMAnalysis();
+            } else {
+              femState.clear();
+              uiState.setShowFEMResults(false);
+            }
+          }}
         >
-          {#if uiState.theme === 'dark'}
-            <svg class="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 2.293a1 1 0 011.414 0l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 010-1.414zm2.121 4.471a1 1 0 10-1.414 1.414l.707.707a1 1 0 001.414-1.414l-.707-.707zM10 14a4 4 0 100-8 4 4 0 000 8zm-7.071-7.07a1 1 0 011.414-1.414l.707.707A1 1 0 013.636 7.636l-.707-.707zM3 10a1 1 0 011-1h1a1 1 0 110 2H4a1 1 0 01-1-1zm2.293 4.293a1 1 0 010 1.414l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 0zM14 16.707a1 1 0 011.414-1.414l.707.707a1 1 0 01-1.414 1.414l-.707-.707zM8.94 13.06a1 1 0 011.414 0l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-            </svg>
-          {:else}
-            <svg class="w-3.5 h-3.5 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-            </svg>
-          {/if}
+          {uiState.femAutoCompute ? '● Live On' : '○ Live Off'}
         </button>
       </div>
+      <!-- Compact widget buttons: Reset View, Clear All, Save, Load -->
+      <div class="flex gap-1">
+        <button
+          onclick={() => { model.resetView(); uiState.setStatusMessage('View reset'); }}
+          class="flex-1 rounded bg-[#1a1a1a] py-1 text-[9px] text-[#ffffff] hover:bg-[#D62430] transition-colors cursor-pointer"
+          title="Reset view zoom/pan"
+        >Reset View</button>
+        <button
+          onclick={() => { model.resetModel(); uiState.setStatusMessage('Model cleared'); }}
+          class="flex-1 rounded bg-[#1a1a1a] py-1 text-[9px] text-[#ffffff] hover:bg-[#D62430] transition-colors cursor-pointer"
+          title="Clear all elements"
+        >Clear All</button>
+        <button
+          onclick={() => model.saveToFile()}
+          class="flex-1 rounded bg-[#1a1a1a] py-1 text-[9px] text-[#ffffff] hover:bg-[#D62430] transition-colors cursor-pointer"
+          title="Save project (Ctrl+S)"
+        >Save</button>
+        <button
+          onclick={() => document.getElementById('project-file-input')?.click()}
+          class="flex-1 rounded bg-[#1a1a1a] py-1 text-[9px] text-[#ffffff] hover:bg-[#D62430] transition-colors cursor-pointer"
+          title="Open .9e project file"
+        >Open</button>
+      </div>
+      <div class="flex items-center gap-1 px-1">
+        <label class="text-[9px] text-[#888888] shrink-0">Project:</label>
+        <input
+          type="text"
+          value={model.projectName}
+          oninput={(e) => { model.projectName = (e.target as HTMLInputElement).value || 'project'; }}
+          class="flex-1 rounded bg-[#1a1a1a] border border-[#333333] px-1.5 py-0.5 text-[10px] text-[#ffffff] focus:border-[#D62430] focus:outline-none"
+          placeholder="Project name"
+        />
+      </div>
+      <ImageUploader />
       <button
-        class="rounded px-2 py-0.5 text-[9px] font-bold uppercase transition-colors cursor-pointer border
-          {uiState.femAutoCompute 
-            ? 'bg-[#D62430] border-[#D62430] text-white hover:bg-[#B01E28]' 
-            : 'bg-[#1a1a1a] border-[#333333] text-[#ffffff] hover:bg-[#D62430]'}"
-        class:active={uiState.femAutoCompute}
-        onclick={() => { 
-          uiState.femAutoCompute = !uiState.femAutoCompute;
-          if (uiState.femAutoCompute) {
-            triggerFEMAnalysis();
-          } else {
-            femState.clear();
-            uiState.setShowFEMResults(false);
-          }
-        }}
-      >
-        {uiState.femAutoCompute ? '● Live On' : '○ Live Off'}
-      </button>
-    </div>
-    <!-- Compact widget buttons: Reset View, Clear All, Save, Load -->
-    <div class="flex gap-1">
-      <button
-        onclick={() => { model.resetView(); uiState.setStatusMessage('View reset'); }}
-        class="flex-1 rounded bg-[#1a1a1a] py-1 text-[9px] text-[#ffffff] hover:bg-[#D62430] transition-colors cursor-pointer"
-        title="Reset view zoom/pan"
-      >Reset View</button>
-      <button
-        onclick={() => { model.resetModel(); uiState.setStatusMessage('Model cleared'); }}
-        class="flex-1 rounded bg-[#1a1a1a] py-1 text-[9px] text-[#ffffff] hover:bg-[#D62430] transition-colors cursor-pointer"
-        title="Clear all elements"
-      >Clear All</button>
-      <button
-        onclick={() => model.saveToFile()}
-        class="flex-1 rounded bg-[#1a1a1a] py-1 text-[9px] text-[#ffffff] hover:bg-[#D62430] transition-colors cursor-pointer"
-        title="Save project (Ctrl+S)"
-      >Save</button>
-      <button
-        onclick={() => document.getElementById('project-file-input')?.click()}
-        class="flex-1 rounded bg-[#1a1a1a] py-1 text-[9px] text-[#ffffff] hover:bg-[#D62430] transition-colors cursor-pointer"
-        title="Open .9e project file"
-      >Open</button>
-    </div>
-    <div class="flex items-center gap-1 px-1">
-      <label class="text-[9px] text-[#888888] shrink-0">Project:</label>
+        onclick={() => uiState.showExportDialog = true}
+        class="w-full rounded bg-[#D62430] py-1.5 text-xs text-white hover:bg-[#B01E28] transition-colors border border-[#D62430]"
+      >Export</button>
+      
+      <!-- FEM Settings Panel (Mesh Size control) -->
+      <div class="sidebar-panel flex flex-col gap-1.5 rounded-lg bg-[#1a1a1a] p-2 border border-[#333333] mt-0.5">
+        <div class="text-[10px] font-bold text-[#ffffff] uppercase tracking-wider px-1">FEM Settings</div>
+        <div class="flex items-center justify-between px-1">
+          <label class="text-[9px] text-slate-400">Mesh Size:</label>
+          <span class="text-[9px] font-mono text-white">{uiState.femMeshSize.toFixed(2)}m</span>
+        </div>
+        <input
+          type="range"
+          min="0.15"
+          max="2.0"
+          step="0.05"
+          value={uiState.femMeshSize}
+          oninput={(e) => { uiState.femMeshSize = parseFloat(e.currentTarget.value); if (uiState.femAutoCompute) triggerFEMAnalysis(); }}
+          class="w-full accent-[#D62430] cursor-pointer h-1.5 bg-[#333333] rounded-lg appearance-none"
+        />
+      </div>
+
       <input
-        type="text"
-        value={model.projectName}
-        oninput={(e) => { model.projectName = (e.target as HTMLInputElement).value || 'project'; }}
-        class="flex-1 rounded bg-[#1a1a1a] border border-[#333333] px-1.5 py-0.5 text-[10px] text-[#ffffff] focus:border-[#D62430] focus:outline-none"
-        placeholder="Project name"
+        id="project-file-input"
+        type="file"
+        accept=".9e,application/json"
+        class="hidden"
+        onchange={(e) => { const input = e.currentTarget as HTMLInputElement; const file = input.files?.[0]; if (file) { model.loadFromFile(file).then(() => { uiState.setStatusMessage('Project loaded'); }).catch(err => { uiState.setStatusMessage('Load error: ' + err.message); }); input.value = ''; } }}
       />
+      {#if uiState.viewMode === '2d'}
+        <Toolbar />
+      {/if}
+      {#if uiState.tool === 'column'}
+        <ColumnPlacementPanel />
+      {/if}
     </div>
-    <ImageUploader />
-    <button
-      onclick={() => uiState.showExportDialog = true}
-      class="w-full rounded bg-[#D62430] py-1.5 text-xs text-white hover:bg-[#B01E28] transition-colors border border-[#D62430]"
-    >Export</button>
-    <input
-      id="project-file-input"
-      type="file"
-      accept=".9e,application/json"
-      class="hidden"
-      onchange={(e) => { const input = e.currentTarget as HTMLInputElement; const file = input.files?.[0]; if (file) { model.loadFromFile(file).then(() => { uiState.setStatusMessage('Project loaded'); }).catch(err => { uiState.setStatusMessage('Load error: ' + err.message); }); input.value = ''; } }}
-    />
+
+    <!-- Fixed bottom section -->
     {#if uiState.viewMode === '2d'}
-      <Toolbar />
       {#if femState.hasResults}
-        <div class="sidebar-panel flex flex-col gap-1.5 rounded-lg bg-[#1a1a1a] p-2 shadow-lg border border-[#333333]">
+        <div class="p-2 border-t border-[#222222] bg-[#0c0c0c] flex flex-col gap-1.5 shrink-0">
           <div class="text-[10px] font-bold text-[#ffffff] uppercase tracking-wider px-1">Display</div>
           <div class="grid grid-cols-3 gap-1">
             {#each ['deflection', 'mx', 'my', 'mxy', 'punching'] as type}
               {#if type !== 'punching' || (femState.activeResult?.columnPunching?.length ?? 0) > 0}
                 <button
-                  class="rounded py-1 text-[10px] transition-colors
+                  class="rounded py-1 text-[10px] transition-colors cursor-pointer text-center
                     {femState.showFEMContour && femState.resultType === type
-                      ? 'bg-[#D62430] text-white'
-                      : 'bg-[#333333] text-[#ffffff] hover:bg-[#D62430] hover:text-white'}"
-                  class:active={femState.showFEMContour && femState.resultType === type}
+                      ? 'bg-[#D62430] text-white font-bold'
+                      : 'bg-[#222222] text-[#ffffff] hover:bg-[#D62430] hover:text-white'}"
                   onclick={() => {
                     if (femState.showFEMContour && femState.resultType === type) {
                       femState.showFEMContour = false;
@@ -493,13 +522,10 @@
         </div>
       {/if}
     {:else}
-      <div class="sidebar-panel flex flex-col gap-1.5 rounded-lg bg-[#1a1a1a] p-2 shadow-lg border border-[#333333]">
+      <div class="p-2 border-t border-[#222222] bg-[#0c0c0c] flex flex-col gap-1 shrink-0">
         <div class="text-[10px] font-bold text-[#ffffff] uppercase tracking-wider px-1">3D View</div>
-        <p class="text-[10px] text-[#ffffff]">Viewing deformed shape</p>
+        <p class="text-[9px] text-slate-400 px-1">Viewing deformed shape</p>
       </div>
-    {/if}
-    {#if uiState.tool === 'column'}
-      <ColumnPlacementPanel />
     {/if}
   </div>
 
@@ -539,7 +565,9 @@
       </div>
     </div>
 
-    <LayersPanel />
+    {#if floorLayers.layers.length > 0}
+      <LayersPanel />
+    {/if}
     <PropertiesPanel />
 
     <ContextMenu />
@@ -548,7 +576,6 @@
 
   <div class="absolute right-3 top-3 flex flex-col gap-3 pointer-events-none z-10">
     <div class="pointer-events-auto"><MetricsHUD /></div>
-    <div class="pointer-events-auto"><ResultsOverlay /></div>
   </div>
 
   <div class="absolute right-3 bottom-3 pointer-events-auto z-10">

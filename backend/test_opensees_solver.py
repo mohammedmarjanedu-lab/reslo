@@ -58,8 +58,8 @@ def test_simply_supported_square_plate():
     wz_custom = {d.nodeId: d.wz for d in res_custom.nodeDeflections}
     wz_ops = {d.nodeId: d.wz for d in res_ops.nodeDeflections}
     
-    max_w_custom = max(wz_custom.values())
-    max_w_ops = max(wz_ops.values())
+    max_w_custom = max(abs(w) for w in wz_custom.values())
+    max_w_ops = max(abs(w) for w in wz_ops.values())
     
     print(f"\nSS Max wz Custom: {max_w_custom*1000:.6f} mm, OpenSees: {max_w_ops*1000:.6f} mm")
     # Verify deflection matches within 2%
@@ -165,8 +165,8 @@ def test_square_plate_with_beams_and_columns():
     wz_custom = {d.nodeId: d.wz for d in res_custom.nodeDeflections}
     wz_ops = {d.nodeId: d.wz for d in res_ops.nodeDeflections}
     
-    max_w_custom = max(wz_custom.values())
-    max_w_ops = max(wz_ops.values())
+    max_w_custom = max(abs(w) for w in wz_custom.values())
+    max_w_ops = max(abs(w) for w in wz_ops.values())
     
     print(f"\nBeam-Col Max wz Custom: {max_w_custom*1000:.6f} mm, OpenSees: {max_w_ops*1000:.6f} mm")
     
